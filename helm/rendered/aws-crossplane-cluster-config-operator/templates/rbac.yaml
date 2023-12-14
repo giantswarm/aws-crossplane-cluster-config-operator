@@ -1,0 +1,67 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ include "resource.default.name"  . }}
+  labels:
+  {{- include "labels.common" . | nindent 4 }}
+rules:
+  - apiGroups:
+      - ""
+      - aws.upbound.io
+    resources:
+      - configmaps
+      - providerconfigs
+    verbs:
+      - get
+      - list
+      - create
+      - delete
+      - watch
+  - apiGroups:
+      - infrastructure.cluster.x-k8s.io
+    resources:
+      - awsclusters
+      - awsclusters/status
+    verbs:
+      - get
+      - list
+      - patch
+      - watch
+  - apiGroups:
+      - infrastructure.cluster.x-k8s.io
+    resources:
+      - awsclusterroleidentities
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - coordination.k8s.io
+    resources:
+      - leases
+    verbs:
+      - get
+      - create
+      - update
+  - apiGroups:
+      - ""
+    resources:
+      - events
+    verbs:
+      - create
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ include "resource.default.name"  . }}
+  labels:
+  {{- include "labels.common" . | nindent 4 }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "resource.default.name"  . }}
+    namespace: {{ include "resource.default.namespace"  . }}
+roleRef:
+  kind: ClusterRole
+  name: {{ include "resource.default.name"  . }}
+  apiGroup: rbac.authorization.k8s.io
+---

@@ -1,0 +1,50 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "resource.default.name"  . }}
+  namespace: {{ include "resource.default.namespace"  . }}
+  labels:
+  {{- include "labels.common" . | nindent 4 }}
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+  {{- include "labels.selector" . | nindent 6 }}
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      annotations:
+        releaseRevision: {{ .Release.Revision | quote }}
+      labels:
+    {{- include "labels.selector" . | nindent 8 }}
+    spec:
+      serviceAccountName: {{ include "resource.default.name"  . }}
+      securityContext:
+        runAsUser: {{ .Values.pod.user.id }}
+        runAsGroup: {{ .Values.pod.group.id }}
+        {{- with .Values.podSecurityContext }}
+          {{- . | toYaml | nindent 8 }}
+        {{- end }}
+      containers:
+        - name: {{ .Chart.Name }}
+          image: "{{ .Values.image.registry }}/{{ .Values.image.name }}:{{ default .Chart.Version .Values.image.tag }}"
+          command:
+            - /manager
+          args:
+            - --leader-elect
+            - --management-cluster-role={{ .Values.managementClusterRole }}
+          securityContext:
+            {{- with .Values.securityContext }}
+              {{- . | toYaml | nindent 12 }}
+            {{- end }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          resources:
+            requests:
+              cpu: 100m
+              memory: 50Mi
+            limits:
+              cpu: 100m
+              memory: 80Mi
+      terminationGracePeriodSeconds: 10
