@@ -33,6 +33,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/yaml"
 )
 
 const Finalizer = "crossplane-config-operator.finalizers.giantswarm.io/config-map-controller"
@@ -43,9 +44,9 @@ type ConfigMapReconciler struct {
 	ManagementClusterRole string
 }
 
-//+kubebuilder:rbac:groups=ship.my.domain,resources=frigates,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=ship.my.domain,resources=frigates/status,verbs=get;update;patch
-//+kubebuilder:rbac:groups=ship.my.domain,resources=frigates/finalizers,verbs=update
+// +kubebuilder:rbac:groups=ship.my.domain,resources=frigates,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=ship.my.domain,resources=frigates/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=ship.my.domain,resources=frigates/finalizers,verbs=update
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
@@ -122,12 +123,27 @@ func (r *ConfigMapReconciler) reconcileNormal(ctx context.Context, cluster *capa
 	return ctrl.Result{}, nil
 }
 
+type crossplaneConfigValues struct {
+	AccountID   string `json:"accountID"`
+	ClusterName string `json:"clusterName"`
+}
+
 func (r *ConfigMapReconciler) reconcileConfigMap(
 	ctx context.Context,
 	cluster *capa.AWSCluster,
 	accountID string,
 ) error {
 	logger := log.FromContext(ctx)
+
+	values := crossplaneConfigValues{
+		AccountID:   accountID,
+		ClusterName: cluster.Name,
+	}
+
+	configMapValues, err := yaml.Marshal(values)
+	if err != nil {
+		return errors.WithStack(err)
+	}
 
 	config := &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
@@ -138,11 +154,10 @@ func (r *ConfigMapReconciler) reconcileConfigMap(
 			},
 		},
 		Data: map[string]string{
-			"accountID":   accountID,
-			"clusterName": cluster.Name,
+			"values": string(configMapValues),
 		},
 	}
-	err := r.Client.Create(ctx, config)
+	err = r.Client.Create(ctx, config)
 	if k8serrors.IsAlreadyExists(err) {
 		logger.Info("config map already exists")
 		return nil
