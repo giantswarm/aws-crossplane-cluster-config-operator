@@ -1,7 +1,0 @@
-apiVersion: v2
-name: aws-crossplane-cluster-config-operator
-description: Please add description
-home: https://github.com/giantswarm/aws-crossplane-cluster-config-operator
-version: "0.1.0"
-annotations:
-  application.giantswarm.io/team: "phoenix"

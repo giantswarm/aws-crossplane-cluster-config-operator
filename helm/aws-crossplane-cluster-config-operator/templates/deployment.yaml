@@ -35,6 +35,7 @@ spec:
           args:
             - --leader-elect
             - --management-cluster-role={{ .Values.managementClusterRole }}
+            - --base-domain={{ .Values.baseDomain }}
           securityContext:
             {{- with .Values.securityContext }}
               {{- . | toYaml | nindent 12 }}

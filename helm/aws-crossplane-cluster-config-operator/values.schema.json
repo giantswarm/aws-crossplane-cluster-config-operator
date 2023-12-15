@@ -32,6 +32,9 @@
                 }
             }
         },
+        "baseDomain": {
+            "type": "string"
+        },
         "managementClusterRole": {
             "type": "string"
         },

@@ -11,6 +11,7 @@ pod:
     id: "1000"
 
 managementClusterRole: ""
+baseDomain: ""
 
 # Add seccomp to pod security context
 podSecurityContext:
@@ -27,4 +28,3 @@ securityContext:
   capabilities:
     drop:
     - ALL
-

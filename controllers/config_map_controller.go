@@ -41,6 +41,7 @@ const Finalizer = "crossplane-config-operator.finalizers.giantswarm.io/config-ma
 // ConfigMapReconciler reconciles a Frigate object
 type ConfigMapReconciler struct {
 	Client                client.Client
+	BaseDomain            string
 	ManagementClusterRole string
 }
 
@@ -106,7 +107,7 @@ func (r *ConfigMapReconciler) reconcileNormal(ctx context.Context, cluster *capa
 		return ctrl.Result{}, errors.WithStack(err)
 	}
 
-	err = r.reconcileConfigMap(ctx, cluster, roleARN.AccountID)
+	err = r.reconcileConfigMap(ctx, cluster, roleARN.AccountID, r.BaseDomain)
 	if err != nil {
 		logger.Error(err, "failed to reconcile config map")
 		return ctrl.Result{}, errors.WithStack(err)
@@ -125,18 +126,20 @@ func (r *ConfigMapReconciler) reconcileNormal(ctx context.Context, cluster *capa
 
 type crossplaneConfigValues struct {
 	AccountID   string `json:"accountID"`
+	BaseDomain  string `json:"baseDomain"`
 	ClusterName string `json:"clusterName"`
 }
 
 func (r *ConfigMapReconciler) reconcileConfigMap(
 	ctx context.Context,
 	cluster *capa.AWSCluster,
-	accountID string,
+	accountID, baseDomain string,
 ) error {
 	logger := log.FromContext(ctx)
 
 	values := crossplaneConfigValues{
 		AccountID:   accountID,
+		BaseDomain:  fmt.Sprintf("%s.%s", cluster.Name, baseDomain),
 		ClusterName: cluster.Name,
 	}
 
