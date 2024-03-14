@@ -10,8 +10,8 @@ pod:
   group:
     id: "1000"
 
-assumeRoleARN: ""
-providerRoleARN: ""
+assumeRole: ""
+providerRole: ""
 baseDomain: ""
 
 # Add seccomp to pod security context

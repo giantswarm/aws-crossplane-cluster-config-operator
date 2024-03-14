@@ -34,8 +34,8 @@ spec:
             - /manager
           args:
             - --leader-elect
-            - --provider-role={{ .Values.providerRoleARN }}
-            - --assume-role={{ .Values.assumeRoleARN }}
+            - --provider-role={{ .Values.providerRole }}
+            - --assume-role={{ .Values.assumeRole }}
             - --base-domain={{ .Values.baseDomain }}
           securityContext:
             {{- with .Values.securityContext }}
