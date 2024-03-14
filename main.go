@@ -53,10 +53,12 @@ func main() {
 	var metricsAddr string
 	var enableLeaderElection bool
 	var probeAddr string
-	var managementClusterRole string
+	var assumeRole string
+	var providerRole string
 	var baseDomain string
 	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
-	flag.StringVar(&managementClusterRole, "management-cluster-role", "", "The management cluster role.")
+	flag.StringVar(&assumeRole, "assume-role", "", "The role used by the aws crossplane provider.")
+	flag.StringVar(&providerRole, "provider-role", "", "The role used by the aws crossplane provider.")
 	flag.StringVar(&baseDomain, "base-domain", "", "Management cluster base domain.")
 	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
 	flag.BoolVar(&enableLeaderElection, "leader-elect", false,
@@ -84,9 +86,10 @@ func main() {
 	}
 
 	if err = (&controllers.ConfigMapReconciler{
-		Client:                mgr.GetClient(),
-		BaseDomain:            baseDomain,
-		ManagementClusterRole: managementClusterRole,
+		Client:       mgr.GetClient(),
+		BaseDomain:   baseDomain,
+		AssumeRole:   assumeRole,
+		ProviderRole: providerRole,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Frigate")
 		os.Exit(1)

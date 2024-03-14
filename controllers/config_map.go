@@ -39,9 +39,10 @@ import (
 const Finalizer = "crossplane-config-operator.finalizers.giantswarm.io/config-map-controller"
 
 type ConfigMapReconciler struct {
-	Client                client.Client
-	BaseDomain            string
-	ManagementClusterRole string
+	Client       client.Client
+	BaseDomain   string
+	ProviderRole string
+	AssumeRole   string
 }
 
 // SetupWithManager sets up the controller with the Manager.
@@ -303,12 +304,12 @@ func (r *ConfigMapReconciler) getProviderConfigSpec(accountID string) map[string
 		"credentials": map[string]interface{}{
 			"source": "WebIdentity",
 			"webIdentity": map[string]interface{}{
-				"roleARN": fmt.Sprintf("arn:aws:iam::%s:role/crossplane-assume-role", accountID),
+				"roleARN": fmt.Sprintf("arn:aws:iam::%s:role/%s", accountID, r.AssumeRole),
 			},
 		},
 		"assumeRoleChain": []map[string]interface{}{
 			{
-				"roleARN": fmt.Sprintf("arn:aws:iam::%s:role/%s", accountID, r.ManagementClusterRole),
+				"roleARN": fmt.Sprintf("arn:aws:iam::%s:role/%s", accountID, r.ProviderRole),
 			},
 		},
 	}

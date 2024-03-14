@@ -34,7 +34,8 @@ spec:
             - /manager
           args:
             - --leader-elect
-            - --management-cluster-role={{ .Values.managementClusterRole }}
+            - --provider-role={{ .Values.providerRole }}
+            - --assume-role={{ .Values.assumeRole }}
             - --base-domain={{ .Values.baseDomain }}
           securityContext:
             {{- with .Values.securityContext }}

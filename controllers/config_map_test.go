@@ -68,11 +68,11 @@ var _ = Describe("PrefixListEntryReconciler", func() {
 			"credentials": MatchKeys(IgnoreExtras, Keys{
 				"source": Equal("WebIdentity"),
 				"webIdentity": MatchKeys(IgnoreExtras, Keys{
-					"roleARN": Equal(fmt.Sprintf("arn:aws:iam::%s:role/crossplane-assume-role", accountID)),
+					"roleARN": Equal(fmt.Sprintf("arn:aws:iam::%s:role/the-assume-role", accountID)),
 				}),
 			}),
 			"assumeRoleChain": ConsistOf(MatchKeys(IgnoreExtras, Keys{
-				"roleARN": Equal(fmt.Sprintf("arn:aws:iam::%s:role/%s", accountID, "the-role")),
+				"roleARN": Equal(fmt.Sprintf("arn:aws:iam::%s:role/the-provider-role", accountID)),
 			})),
 		})))
 	}
@@ -82,9 +82,10 @@ var _ = Describe("PrefixListEntryReconciler", func() {
 
 		identity, cluster = createRandomClusterWithIdentity()
 		reconciler = &controllers.ConfigMapReconciler{
-			Client:                k8sClient,
-			BaseDomain:            "base.domain.io",
-			ManagementClusterRole: "the-role",
+			Client:       k8sClient,
+			BaseDomain:   "base.domain.io",
+			AssumeRole:   "the-assume-role",
+			ProviderRole: "the-provider-role",
 		}
 		roleARN, err := arn.Parse(identity.Spec.RoleArn)
 		Expect(err).NotTo(HaveOccurred())
@@ -149,12 +150,12 @@ var _ = Describe("PrefixListEntryReconciler", func() {
 					"credentials": map[string]interface{}{
 						"source": "WebIdentity",
 						"webIdentity": map[string]interface{}{
-							"roleARN": fmt.Sprintf("arn:aws:iam::%s:role/crossplane-assume-role", someOtherAccount),
+							"roleARN": fmt.Sprintf("arn:aws:iam::%s:role/some-other-assume-role", someOtherAccount),
 						},
 					},
 					"assumeRoleChain": []map[string]interface{}{
 						{
-							"roleARN": fmt.Sprintf("arn:aws:iam::%s:role/%s", someOtherAccount, "some-other-role"),
+							"roleARN": fmt.Sprintf("arn:aws:iam::%s:role/some-other-provider-role", someOtherAccount),
 						},
 					},
 				},
