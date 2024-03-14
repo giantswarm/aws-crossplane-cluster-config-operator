@@ -53,11 +53,10 @@ func TestControllers(t *testing.T) {
 }
 
 var (
-	logger           logr.Logger
-	k8sClient        client.Client
-	testEnv          *envtest.Environment
-	namespace        string
-	notExistResource = "does-not-exist"
+	logger    logr.Logger
+	k8sClient client.Client
+	testEnv   *envtest.Environment
+	namespace string
 )
 
 var _ = BeforeSuite(func() {
@@ -154,18 +153,6 @@ func newCluster(name string, annotationsKeyValues ...string) *capa.AWSCluster {
 			},
 		},
 	}
-
-	return awsCluster
-}
-
-func createRandomCluster(annotationsKeyValues ...string) *capa.AWSCluster {
-	name := uuid.NewString()
-	awsCluster := newCluster(name, annotationsKeyValues...)
-
-	Expect(k8sClient.Create(context.Background(), awsCluster)).To(Succeed())
-	tests.PatchAWSClusterStatus(k8sClient, awsCluster, capa.AWSClusterStatus{
-		Ready: true,
-	})
 
 	return awsCluster
 }
