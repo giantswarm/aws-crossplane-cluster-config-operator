@@ -16,6 +16,7 @@ rules:
       - list
       - create
       - delete
+      - patch
       - watch
   - apiGroups:
       - infrastructure.cluster.x-k8s.io
