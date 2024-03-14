@@ -139,6 +139,7 @@ func newCluster(name string, annotationsKeyValues ...string) *capa.AWSCluster {
 			Annotations: annotations,
 		},
 		Spec: capa.AWSClusterSpec{
+			Region: "the-region",
 			NetworkSpec: capa.NetworkSpec{
 				VPC: capa.VPCSpec{
 					ID:        uuid.NewString(),

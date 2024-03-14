@@ -19,6 +19,7 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/aws/aws-sdk-go/aws/arn"
 	"github.com/pkg/errors"
@@ -119,9 +120,11 @@ func (r *ConfigMapReconciler) reconcileNormal(ctx context.Context, cluster *capa
 }
 
 type crossplaneConfigValues struct {
-	AccountID   string `json:"accountID"`
-	BaseDomain  string `json:"baseDomain"`
-	ClusterName string `json:"clusterName"`
+	AccountID    string `json:"accountID"`
+	BaseDomain   string `json:"baseDomain"`
+	ClusterName  string `json:"clusterName"`
+	Region       string `json:"region"`
+	AWSPartition string `json:"awsPartition"`
 }
 
 func (r *ConfigMapReconciler) reconcileConfigMap(
@@ -152,14 +155,14 @@ func (r *ConfigMapReconciler) reconcileProviderConfig(ctx context.Context, clust
 
 	err := r.Client.Get(ctx, client.ObjectKeyFromObject(cluster), providerConfig)
 	if k8serrors.IsNotFound(err) {
-		return r.createProviderConfig(ctx, providerConfig, accountID)
+		return r.createProviderConfig(ctx, providerConfig, accountID, cluster.Spec.Region)
 	}
 	if err != nil {
 		logger.Error(err, "Failed to get provider config")
 		return errors.WithStack(err)
 	}
 
-	return r.updateProviderConfig(ctx, providerConfig, accountID)
+	return r.updateProviderConfig(ctx, providerConfig, accountID, cluster.Spec.Region)
 }
 
 func (r *ConfigMapReconciler) reconcileDelete(ctx context.Context, cluster *capa.AWSCluster) (ctrl.Result, error) {
@@ -267,10 +270,10 @@ func (r *ConfigMapReconciler) updateConfigMap(ctx context.Context,
 	return nil
 }
 
-func (r *ConfigMapReconciler) createProviderConfig(ctx context.Context, providerConfig *unstructured.Unstructured, accountID string) error {
+func (r *ConfigMapReconciler) createProviderConfig(ctx context.Context, providerConfig *unstructured.Unstructured, accountID, region string) error {
 	logger := log.FromContext(ctx)
 
-	providerConfig.Object["spec"] = r.getProviderConfigSpec(accountID)
+	providerConfig.Object["spec"] = r.getProviderConfigSpec(accountID, region)
 
 	err := r.Client.Create(ctx, providerConfig)
 	if k8serrors.IsAlreadyExists(err) {
@@ -285,11 +288,11 @@ func (r *ConfigMapReconciler) createProviderConfig(ctx context.Context, provider
 	return nil
 }
 
-func (r *ConfigMapReconciler) updateProviderConfig(ctx context.Context, providerConfig *unstructured.Unstructured, accountID string) error {
+func (r *ConfigMapReconciler) updateProviderConfig(ctx context.Context, providerConfig *unstructured.Unstructured, accountID, region string) error {
 	logger := log.FromContext(ctx)
 
 	patchedConfig := providerConfig.DeepCopy()
-	patchedConfig.Object["spec"] = r.getProviderConfigSpec(accountID)
+	patchedConfig.Object["spec"] = r.getProviderConfigSpec(accountID, region)
 	err := r.Client.Patch(ctx, patchedConfig, client.MergeFrom(providerConfig))
 	if err != nil {
 		logger.Error(err, "Failed to patch provider config")
@@ -299,17 +302,18 @@ func (r *ConfigMapReconciler) updateProviderConfig(ctx context.Context, provider
 	return nil
 }
 
-func (r *ConfigMapReconciler) getProviderConfigSpec(accountID string) map[string]interface{} {
+func (r *ConfigMapReconciler) getProviderConfigSpec(accountID, region string) map[string]interface{} {
+	partition := getPartition(region)
 	return map[string]interface{}{
 		"credentials": map[string]interface{}{
 			"source": "WebIdentity",
 			"webIdentity": map[string]interface{}{
-				"roleARN": fmt.Sprintf("arn:aws:iam::%s:role/%s", accountID, r.AssumeRole),
+				"roleARN": fmt.Sprintf("arn:%s:iam::%s:role/%s", partition, accountID, r.AssumeRole),
 			},
 		},
 		"assumeRoleChain": []map[string]interface{}{
 			{
-				"roleARN": fmt.Sprintf("arn:aws:iam::%s:role/%s", accountID, r.ProviderRole),
+				"roleARN": fmt.Sprintf("arn:%s:iam::%s:role/%s", partition, accountID, r.ProviderRole),
 			},
 		},
 	}
@@ -317,9 +321,11 @@ func (r *ConfigMapReconciler) getProviderConfigSpec(accountID string) map[string
 
 func getConfigMapValues(cluster *capa.AWSCluster, accountID, baseDomain string) (string, error) {
 	values := crossplaneConfigValues{
-		AccountID:   accountID,
-		BaseDomain:  fmt.Sprintf("%s.%s", cluster.Name, baseDomain),
-		ClusterName: cluster.Name,
+		AccountID:    accountID,
+		BaseDomain:   fmt.Sprintf("%s.%s", cluster.Name, baseDomain),
+		ClusterName:  cluster.Name,
+		Region:       cluster.Spec.Region,
+		AWSPartition: getPartition(cluster.Spec.Region),
 	}
 
 	configMapValues, err := yaml.Marshal(values)
@@ -345,4 +351,11 @@ func getProviderConfig(cluster *capa.AWSCluster) *unstructured.Unstructured {
 	})
 
 	return providerConfig
+}
+
+func getPartition(region string) string {
+	if strings.HasPrefix(region, "cn-") {
+		return "aws-cn"
+	}
+	return "aws"
 }

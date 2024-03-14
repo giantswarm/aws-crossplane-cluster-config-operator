@@ -44,6 +44,8 @@ var _ = Describe("PrefixListEntryReconciler", func() {
                 accountID: "%s"
                 baseDomain: %s.base.domain.io
                 clusterName: %s
+                region: the-region
+                awsPartition: aws
             `, accountID, cluster.Name, cluster.Name))))
 	}
 
@@ -132,9 +134,11 @@ var _ = Describe("PrefixListEntryReconciler", func() {
 			}
 			configMap.Data = map[string]string{
 				"values": fmt.Sprintf(`
-					"accountID":   "%s",
-					"baseDomain":  %s.base.domain.io,
-					"clusterName": %s,
+					"accountID":   "%s"
+					"baseDomain":  %s.base.domain.io
+					"clusterName": %s
+                    "region": some-other-region
+                    "awsPartition:" cn
                 `, someOtherAccount, cluster.Name, cluster.Name),
 			}
 			err := k8sClient.Create(ctx, configMap)
@@ -220,6 +224,60 @@ var _ = Describe("PrefixListEntryReconciler", func() {
 				Name:      cluster.Name,
 			}, providerConfig)
 			Expect(k8serrors.IsNotFound(err)).To(BeTrue())
+		})
+	})
+
+	When("the cluster is in china", func() {
+		BeforeEach(func() {
+			cluster.Spec.Region = "cn-north-1"
+			err := k8sClient.Update(ctx, cluster)
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("creates the configmap with the correct aws partition", func() {
+			configMap := &corev1.ConfigMap{}
+			err := k8sClient.Get(ctx, types.NamespacedName{
+				Namespace: cluster.Namespace,
+				Name:      fmt.Sprintf("%s-crossplane-config", cluster.Name),
+			}, configMap)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(configMap.Data).To(HaveKeyWithValue("values", MatchYAML(fmt.Sprintf(`
+                accountID: "%s"
+                baseDomain: %s.base.domain.io
+                clusterName: %s
+                region: cn-north-1
+                awsPartition: aws-cn
+            `, accountID, cluster.Name, cluster.Name))))
+		})
+
+		It("creates the provider config with the correct aws partition", func() {
+			providerConfig := &unstructured.Unstructured{}
+			providerConfig.SetGroupVersionKind(schema.GroupVersionKind{
+				Group:   "aws.upbound.io",
+				Kind:    "ProviderConfig",
+				Version: "v1beta1",
+			})
+
+			err := k8sClient.Get(ctx, types.NamespacedName{
+				Namespace: cluster.Namespace,
+				Name:      cluster.Name,
+			}, providerConfig)
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(providerConfig.Object).To(HaveKeyWithValue("metadata", MatchKeys(IgnoreExtras, Keys{
+				"name": Equal(cluster.Name),
+			})))
+			Expect(providerConfig.Object).To(HaveKeyWithValue("spec", MatchKeys(IgnoreExtras, Keys{
+				"credentials": MatchKeys(IgnoreExtras, Keys{
+					"source": Equal("WebIdentity"),
+					"webIdentity": MatchKeys(IgnoreExtras, Keys{
+						"roleARN": Equal(fmt.Sprintf("arn:aws-cn:iam::%s:role/the-assume-role", accountID)),
+					}),
+				}),
+				"assumeRoleChain": ConsistOf(MatchKeys(IgnoreExtras, Keys{
+					"roleARN": Equal(fmt.Sprintf("arn:aws-cn:iam::%s:role/the-provider-role", accountID)),
+				})),
+			})))
 		})
 	})
 
