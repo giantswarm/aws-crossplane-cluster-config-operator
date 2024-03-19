@@ -19,19 +19,6 @@ schemadocs generate helm/aws-crossplane-cluster-config-operator/values.schema.js
 <!-- DOCS_START -->
 
 ###
-Properties within the `.securityContext` top-level object
-
-| **Property** | **Description** | **More Details** |
-| :----------- | :-------------- | :--------------- |
-| `securityContext.allowPrivilegeEscalation` |**None**|**Type:** `boolean`<br/>|
-| `securityContext.capabilities` |**None**|**Type:** `object`<br/>|
-| `securityContext.capabilities.drop` |**None**|**Type:** `array`<br/>|
-| `securityContext.capabilities.drop[*]` |**None**|**Type:** `string`<br/>|
-| `securityContext.readOnlyRootFilesystem` |**None**|**Type:** `boolean`<br/>|
-| `securityContext.seccompProfile` |**None**|**Type:** `object`<br/>|
-| `securityContext.seccompProfile.type` |**None**|**Type:** `string`<br/>|
-
-###
 Properties within the `.image` top-level object
 
 | **Property** | **Description** | **More Details** |
@@ -61,6 +48,19 @@ Properties within the `.podSecurityContext` top-level object
 | `podSecurityContext.seccompProfile.type` |**None**|**Type:** `string`<br/>|
 
 ###
+Properties within the `.securityContext` top-level object
+
+| **Property** | **Description** | **More Details** |
+| :----------- | :-------------- | :--------------- |
+| `securityContext.allowPrivilegeEscalation` |**None**|**Type:** `boolean`<br/>|
+| `securityContext.capabilities` |**None**|**Type:** `object`<br/>|
+| `securityContext.capabilities.drop` |**None**|**Type:** `array`<br/>|
+| `securityContext.capabilities.drop[*]` |**None**|**Type:** `string`<br/>|
+| `securityContext.readOnlyRootFilesystem` |**None**|**Type:** `boolean`<br/>|
+| `securityContext.seccompProfile` |**None**|**Type:** `object`<br/>|
+| `securityContext.seccompProfile.type` |**None**|**Type:** `string`<br/>|
+
+###
 Properties within the `.global.podSecurityStandards` object
 
 | **Property** | **Description** | **More Details** |
@@ -71,8 +71,9 @@ Properties within the `.global.podSecurityStandards` object
 
 | **Property** | **Description** | **More Details** |
 | :----------- | :-------------- | :--------------- |
+| `assumeRole` |**None**|**Type:** `string`<br/>|
 | `baseDomain` |**None**|**Type:** `string`<br/>|
-| `managementClusterRole` |**None**|**Type:** `string`<br/>|
+| `providerRole` |**None**|**Type:** `string`<br/>|
 
 
 
