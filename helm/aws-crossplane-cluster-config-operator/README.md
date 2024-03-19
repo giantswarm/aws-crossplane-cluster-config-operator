@@ -18,7 +18,7 @@ schemadocs generate helm/aws-crossplane-cluster-config-operator/values.schema.js
 
 <!-- DOCS_START -->
 
-### 
+###
 Properties within the `.securityContext` top-level object
 
 | **Property** | **Description** | **More Details** |
@@ -31,7 +31,7 @@ Properties within the `.securityContext` top-level object
 | `securityContext.seccompProfile` |**None**|**Type:** `object`<br/>|
 | `securityContext.seccompProfile.type` |**None**|**Type:** `string`<br/>|
 
-### 
+###
 Properties within the `.image` top-level object
 
 | **Property** | **Description** | **More Details** |
@@ -41,7 +41,7 @@ Properties within the `.image` top-level object
 | `image.registry` |**None**|**Type:** `string`<br/>|
 | `image.tag` |**None**|**Type:** `string`<br/>|
 
-### 
+###
 Properties within the `.pod` top-level object
 
 | **Property** | **Description** | **More Details** |
@@ -51,7 +51,7 @@ Properties within the `.pod` top-level object
 | `pod.user` |**None**|**Type:** `object`<br/>|
 | `pod.user.id` |**None**|**Type:** `string`<br/>|
 
-### 
+###
 Properties within the `.podSecurityContext` top-level object
 
 | **Property** | **Description** | **More Details** |
@@ -60,7 +60,7 @@ Properties within the `.podSecurityContext` top-level object
 | `podSecurityContext.seccompProfile` |**None**|**Type:** `object`<br/>|
 | `podSecurityContext.seccompProfile.type` |**None**|**Type:** `string`<br/>|
 
-### 
+###
 Properties within the `.global.podSecurityStandards` object
 
 | **Property** | **Description** | **More Details** |
