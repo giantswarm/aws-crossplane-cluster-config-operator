@@ -1,7 +1,18 @@
 {
     "$schema": "http://json-schema.org/schema#",
     "type": "object",
+    "required": [
+        "assumeRole",
+        "baseDomain",
+        "providerRole"
+    ],
     "properties": {
+        "assumeRole": {
+            "type": "string"
+        },
+        "baseDomain": {
+            "type": "string"
+        },
         "global": {
             "type": "object",
             "properties": {
@@ -31,12 +42,6 @@
                     "type": "string"
                 }
             }
-        },
-        "baseDomain": {
-            "type": "string"
-        },
-        "managementClusterRole": {
-            "type": "string"
         },
         "pod": {
             "type": "object",
@@ -74,6 +79,9 @@
                     }
                 }
             }
+        },
+        "providerRole": {
+            "type": "string"
         },
         "securityContext": {
             "type": "object",

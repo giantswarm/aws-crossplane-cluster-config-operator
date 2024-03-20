@@ -23,6 +23,7 @@ import (
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
 
+	"go.uber.org/zap/zapcore"
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 
 	"k8s.io/apimachinery/pkg/runtime"
@@ -53,10 +54,12 @@ func main() {
 	var metricsAddr string
 	var enableLeaderElection bool
 	var probeAddr string
-	var managementClusterRole string
+	var assumeRoleARN string
+	var providerRoleARN string
 	var baseDomain string
 	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
-	flag.StringVar(&managementClusterRole, "management-cluster-role", "", "The management cluster role.")
+	flag.StringVar(&assumeRoleARN, "assume-role", "", "The role used by the aws crossplane provider.")
+	flag.StringVar(&providerRoleARN, "provider-role", "", "The role used by the aws crossplane provider.")
 	flag.StringVar(&baseDomain, "base-domain", "", "Management cluster base domain.")
 	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
 	flag.BoolVar(&enableLeaderElection, "leader-elect", false,
@@ -64,6 +67,7 @@ func main() {
 			"Enabling this will ensure there is only one active controller manager.")
 	opts := zap.Options{
 		Development: true,
+		TimeEncoder: zapcore.RFC3339TimeEncoder,
 	}
 	opts.BindFlags(flag.CommandLine)
 	flag.Parse()
@@ -71,9 +75,9 @@ func main() {
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
-		Scheme:                 scheme,
-		MetricsBindAddress:     metricsAddr,
-		Port:                   9443,
+		Scheme: scheme,
+		// MetricsBindAddress:     metricsAddr,
+		// Port:                   9443,
 		HealthProbeBindAddress: probeAddr,
 		LeaderElection:         enableLeaderElection,
 		LeaderElectionID:       "c612f06f.my.domain",
@@ -84,9 +88,10 @@ func main() {
 	}
 
 	if err = (&controllers.ConfigMapReconciler{
-		Client:                mgr.GetClient(),
-		BaseDomain:            baseDomain,
-		ManagementClusterRole: managementClusterRole,
+		Client:       mgr.GetClient(),
+		BaseDomain:   baseDomain,
+		AssumeRole:   assumeRoleARN,
+		ProviderRole: providerRoleARN,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Frigate")
 		os.Exit(1)
