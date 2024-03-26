@@ -25,6 +25,7 @@ import (
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
+	metaerr "k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -154,6 +155,10 @@ func (r *ConfigMapReconciler) reconcileProviderConfig(ctx context.Context, clust
 	providerConfig := getProviderConfig(cluster)
 
 	err := r.Client.Get(ctx, client.ObjectKeyFromObject(cluster), providerConfig)
+	if metaerr.IsNoMatchError(err) {
+		logger.Info("Provider config CRD not found, skipping provider config creation")
+		return nil
+	}
 	if k8serrors.IsNotFound(err) {
 		return r.createProviderConfig(ctx, providerConfig, accountID, cluster.Spec.Region)
 	}
@@ -186,7 +191,10 @@ func (r *ConfigMapReconciler) reconcileDelete(ctx context.Context, cluster *capa
 	providerConfig := getProviderConfig(cluster)
 
 	err = r.Client.Delete(ctx, providerConfig)
-	if err != nil && !k8serrors.IsNotFound(err) {
+	if err != nil &&
+		!k8serrors.IsNotFound(err) &&
+		!metaerr.IsNoMatchError(err) {
+
 		logger.Error(err, "failed to delete provider config")
 		return ctrl.Result{}, errors.WithStack(err)
 	}
