@@ -101,6 +101,12 @@ var _ = Describe("PrefixListEntryReconciler", func() {
 		}
 	})
 
+	JustBeforeEach(func() {
+		result, err := reconciler.Reconcile(ctx, request)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(result.Requeue).To(BeFalse())
+	})
+
 	AfterEach(func() {
 		err := k8sClient.Delete(ctx, cluster)
 		if k8serrors.IsNotFound(err) {
