@@ -21,7 +21,7 @@ import (
 	"github.com/giantswarm/aws-crossplane-cluster-config-operator/controllers"
 )
 
-var _ = Describe("PrefixListEntryReconciler", func() {
+var _ = Describe("ConfigMapReconciler", func() {
 	var (
 		ctx context.Context
 
@@ -42,6 +42,8 @@ var _ = Describe("PrefixListEntryReconciler", func() {
 		Expect(err).NotTo(HaveOccurred())
 		Expect(configMap.Data).To(HaveKeyWithValue("values", MatchYAML(fmt.Sprintf(`
                 accountID: "%s"
+                awsCluster:
+                  vpcId: vpc-1
                 baseDomain: %s.base.domain.io
                 clusterName: %s
                 region: the-region
@@ -140,11 +142,13 @@ var _ = Describe("PrefixListEntryReconciler", func() {
 			}
 			configMap.Data = map[string]string{
 				"values": fmt.Sprintf(`
-					"accountID":   "%s"
-					"baseDomain":  %s.base.domain.io
-					"clusterName": %s
-                    "region": some-other-region
-                    "awsPartition:" cn
+                    accountID: "%s"
+                    awsCluster:
+                        vpcId: vpc-1
+                    awsPartition: cn
+                    baseDomain: %s.base.domain.io
+                    clusterName: %s
+                    region: some-other-region
                 `, someOtherAccount, cluster.Name, cluster.Name),
 			}
 			err := k8sClient.Create(ctx, configMap)
@@ -249,6 +253,8 @@ var _ = Describe("PrefixListEntryReconciler", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(configMap.Data).To(HaveKeyWithValue("values", MatchYAML(fmt.Sprintf(`
                 accountID: "%s"
+                awsCluster:
+                  vpcId: vpc-1
                 baseDomain: %s.base.domain.io
                 clusterName: %s
                 region: cn-north-1
@@ -284,6 +290,43 @@ var _ = Describe("PrefixListEntryReconciler", func() {
 					"roleARN": Equal(fmt.Sprintf("arn:aws-cn:iam::%s:role/the-provider-role", accountID)),
 				})),
 			})))
+		})
+	})
+
+	When("the cluster is provisioned by CAPA", func() {
+		BeforeEach(func() {
+			cluster.Spec.NetworkSpec.VPC.ID = "vpc-123456"
+			err := k8sClient.Update(ctx, cluster)
+			Expect(err).NotTo(HaveOccurred())
+
+			cluster.Status.Network.SecurityGroups = map[capa.SecurityGroupRole]capa.SecurityGroup{
+				capa.SecurityGroupControlPlane: {
+					ID: "sg-789987",
+				},
+			}
+			err = k8sClient.Status().Update(ctx, cluster)
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("creates the configmap with the correct VPC ID and security group ID(s)", func() {
+			configMap := &corev1.ConfigMap{}
+			err := k8sClient.Get(ctx, types.NamespacedName{
+				Namespace: cluster.Namespace,
+				Name:      fmt.Sprintf("%s-crossplane-config", cluster.Name),
+			}, configMap)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(configMap.Data).To(HaveKeyWithValue("values", MatchYAML(fmt.Sprintf(`
+                accountID: "%s"
+                awsCluster:
+                  securityGroups:
+                    controlPlane:
+                      id: sg-789987
+                  vpcId: vpc-123456
+                awsPartition: aws
+                baseDomain: %s.base.domain.io
+                clusterName: %s
+                region: the-region
+            `, accountID, cluster.Name, cluster.Name))))
 		})
 	})
 

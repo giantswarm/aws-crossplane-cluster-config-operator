@@ -121,11 +121,27 @@ func (r *ConfigMapReconciler) reconcileNormal(ctx context.Context, cluster *capa
 }
 
 type crossplaneConfigValues struct {
-	AccountID    string `json:"accountID"`
-	BaseDomain   string `json:"baseDomain"`
-	ClusterName  string `json:"clusterName"`
-	Region       string `json:"region"`
-	AWSPartition string `json:"awsPartition"`
+	AccountID    string                           `json:"accountID"`
+	AWSCluster   crossplaneConfigValuesAWSCluster `json:"awsCluster"`
+	AWSPartition string                           `json:"awsPartition"`
+	BaseDomain   string                           `json:"baseDomain"`
+	ClusterName  string                           `json:"clusterName"`
+	Region       string                           `json:"region"`
+}
+
+type crossplaneConfigValuesAWSCluster struct {
+	// Filled once available
+	VpcID          string                                          `json:"vpcId,omitempty"`
+	SecurityGroups *crossplaneConfigValuesAWSClusterSecurityGroups `json:"securityGroups,omitempty"`
+}
+
+type crossplaneConfigValuesAWSClusterSecurityGroups struct {
+	// Filled once available
+	ControlPlane *crossplaneConfigValuesAWSClusterSecurityGroup `json:"controlPlane,omitempty"`
+}
+
+type crossplaneConfigValuesAWSClusterSecurityGroup struct {
+	ID string `json:"id"`
 }
 
 func (r *ConfigMapReconciler) reconcileConfigMap(
@@ -328,12 +344,26 @@ func (r *ConfigMapReconciler) getProviderConfigSpec(accountID, region string) ma
 }
 
 func getConfigMapValues(cluster *capa.AWSCluster, accountID, baseDomain string) (string, error) {
+	valuesAWSCluster := crossplaneConfigValuesAWSCluster{}
+	if cluster.Spec.NetworkSpec.VPC.ID != "" {
+		valuesAWSCluster.VpcID = cluster.Spec.NetworkSpec.VPC.ID
+	}
+	if sg, ok := cluster.Status.Network.SecurityGroups[capa.SecurityGroupControlPlane]; ok {
+		if valuesAWSCluster.SecurityGroups == nil {
+			valuesAWSCluster.SecurityGroups = &crossplaneConfigValuesAWSClusterSecurityGroups{}
+		}
+		valuesAWSCluster.SecurityGroups.ControlPlane = &crossplaneConfigValuesAWSClusterSecurityGroup{
+			ID: sg.ID,
+		}
+	}
+
 	values := crossplaneConfigValues{
 		AccountID:    accountID,
+		AWSCluster:   valuesAWSCluster,
+		AWSPartition: getPartition(cluster.Spec.Region),
 		BaseDomain:   fmt.Sprintf("%s.%s", cluster.Name, baseDomain),
 		ClusterName:  cluster.Name,
 		Region:       cluster.Spec.Region,
-		AWSPartition: getPartition(cluster.Spec.Region),
 	}
 
 	configMapValues, err := yaml.Marshal(values)
