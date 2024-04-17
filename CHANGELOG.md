@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Add CAPA-created VPC and security group IDs for usage with the Cilium ENI mode feature (to add pod network security groups via Crossplane)
+
 ## [0.1.1] - 2024-03-26
 
 ### Fixed
