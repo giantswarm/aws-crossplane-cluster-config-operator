@@ -204,13 +204,30 @@ var _ = Describe("ConfigMapReconcilerCAPA", func() {
 
 			err = k8sClient.Delete(context.Background(), capiCluster)
 			Expect(err).NotTo(HaveOccurred())
+
+			patchedCapaCluster := capaCluster.DeepCopy()
+			patchedCapaCluster.Finalizers = []string{controllers.Finalizer}
+
+			err = k8sClient.Patch(context.Background(), patchedCapaCluster, client.MergeFrom(capaCluster))
+			Expect(err).NotTo(HaveOccurred())
+
+			err = k8sClient.Delete(context.Background(), capaCluster)
+			Expect(err).NotTo(HaveOccurred())
 		})
 
-		It("removes the finalizer", func() {
+		It("removes the finalizer on Cluster", func() {
 			err := k8sClient.Get(ctx, types.NamespacedName{
 				Namespace: capiCluster.Namespace,
 				Name:      capiCluster.Name,
 			}, capiCluster)
+			Expect(k8serrors.IsNotFound(err)).To(BeTrue())
+		})
+
+		It("removes the finalizer on AWSCluster", func() {
+			err := k8sClient.Get(ctx, types.NamespacedName{
+				Namespace: capiCluster.Namespace,
+				Name:      capiCluster.Name,
+			}, capaCluster)
 			Expect(k8serrors.IsNotFound(err)).To(BeTrue())
 		})
 

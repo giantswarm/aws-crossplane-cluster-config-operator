@@ -314,20 +314,20 @@ func (r *ConfigMapReconciler) RemoveFinalizer(ctx context.Context, capiCluster *
 	controllerutil.RemoveFinalizer(capiCluster, Finalizer)
 	error := r.Client.Patch(ctx, capiCluster, client.MergeFrom(originalCluster))
 
-	// //check if there is an AWSCluster with the same name and namespace as the capiCluster and remove the finalizer from it as we are
-	// awsCluster := &capa.AWSCluster{}
-	// err := r.Client.Get(ctx, types.NamespacedName{
-	// 	Name:      capiCluster.Name,
-	// 	Namespace: capiCluster.Namespace,
-	// }, awsCluster)
-	// if err == nil {
-	// 	originalAWSCluster := awsCluster.DeepCopy()
-	// 	controllerutil.RemoveFinalizer(awsCluster, Finalizer)
-	// 	err = r.Client.Patch(ctx, awsCluster, client.MergeFrom(originalAWSCluster))
-	// 	if err != nil {
-	// 		return errors.WithStack(err)
-	// 	}
-	// }
+	//check if there is an AWSCluster with the same name and namespace as the capiCluster and remove the finalizer. This enables the migration of the finalizer from CAPA Cluster CR to CAPI Cluster CR
+	awsCluster := &capa.AWSCluster{}
+	err := r.Client.Get(ctx, types.NamespacedName{
+		Name:      capiCluster.Name,
+		Namespace: capiCluster.Namespace,
+	}, awsCluster)
+	if err == nil {
+		originalAWSCluster := awsCluster.DeepCopy()
+		controllerutil.RemoveFinalizer(awsCluster, Finalizer)
+		err = r.Client.Patch(ctx, awsCluster, client.MergeFrom(originalAWSCluster))
+		if err != nil {
+			return errors.WithStack(err)
+		}
+	}
 
 	return error
 }
