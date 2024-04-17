@@ -34,6 +34,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/kubectl/pkg/scheme"
 	capa "sigs.k8s.io/cluster-api-provider-aws/v2/api/v1beta2"
+	eks "sigs.k8s.io/cluster-api-provider-aws/v2/controlplane/eks/api/v1beta2"
 	capi "sigs.k8s.io/cluster-api/api/v1beta1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
@@ -91,6 +92,9 @@ var _ = BeforeSuite(func() {
 	err = capa.AddToScheme(scheme.Scheme)
 	Expect(err).NotTo(HaveOccurred())
 
+	err = eks.AddToScheme(scheme.Scheme)
+	Expect(err).NotTo(HaveOccurred())
+
 	err = capi.AddToScheme(scheme.Scheme)
 	Expect(err).NotTo(HaveOccurred())
 	// +kubebuilder:scaffold:scheme
@@ -122,7 +126,28 @@ var _ = AfterEach(func() {
 	Expect(k8sClient.Delete(context.Background(), namespaceObj)).To(Succeed())
 })
 
-func newCluster(name string, annotationsKeyValues ...string) *capa.AWSCluster {
+func newCapiCluster(name string, annotationsKeyValues ...string) *capi.Cluster {
+	if len(annotationsKeyValues)%2 != 0 {
+		Fail("wrong number of arguments for newCluster. Expected even number of arguments for annotation key/value pairs")
+	}
+
+	annotations := map[string]string{}
+	for i := 0; i < len(annotationsKeyValues); i += 2 {
+		annotations[annotationsKeyValues[i]] = annotationsKeyValues[i+1]
+	}
+
+	awsCluster := &capi.Cluster{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:        name,
+			Namespace:   namespace,
+			Annotations: annotations,
+		},
+	}
+
+	return awsCluster
+}
+
+func newCapaCluster(name string, annotationsKeyValues ...string) *capa.AWSCluster {
 	if len(annotationsKeyValues)%2 != 0 {
 		Fail("wrong number of arguments for newCluster. Expected even number of arguments for annotation key/value pairs")
 	}
@@ -158,9 +183,46 @@ func newCluster(name string, annotationsKeyValues ...string) *capa.AWSCluster {
 	return awsCluster
 }
 
-func createRandomClusterWithIdentity(annotationsKeyValues ...string) (*capa.AWSClusterRoleIdentity, *capa.AWSCluster) {
+func newEksCluster(name string, annotationsKeyValues ...string) *eks.AWSManagedControlPlane {
+	if len(annotationsKeyValues)%2 != 0 {
+		Fail("wrong number of arguments for newCluster. Expected even number of arguments for annotation key/value pairs")
+	}
+
+	annotations := map[string]string{}
+	for i := 0; i < len(annotationsKeyValues); i += 2 {
+		annotations[annotationsKeyValues[i]] = annotationsKeyValues[i+1]
+	}
+
+	eksCluster := &eks.AWSManagedControlPlane{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:        name,
+			Namespace:   namespace,
+			Annotations: annotations,
+		},
+		Spec: eks.AWSManagedControlPlaneSpec{
+			Region: "the-region",
+			NetworkSpec: capa.NetworkSpec{
+				VPC: capa.VPCSpec{
+					ID:        "vpc-1",
+					CidrBlock: fmt.Sprintf("10.%d.0.0/24", rand.Intn(255)),
+				},
+				Subnets: capa.Subnets{
+					{
+						ID:       "sub-1",
+						IsPublic: false,
+					},
+				},
+			},
+		},
+	}
+
+	return eksCluster
+}
+
+func createRandomCapaClusterWithIdentity(annotationsKeyValues ...string) (*capa.AWSClusterRoleIdentity, *capa.AWSCluster, *capi.Cluster) {
 	name := uuid.NewString()
-	awsCluster := newCluster(name, annotationsKeyValues...)
+	awsCluster := newCapaCluster(name, annotationsKeyValues...)
+	capiCluster := newCapiCluster(name, annotationsKeyValues...)
 	identity := newRoleIdentity()
 
 	awsCluster.Spec.IdentityRef = &capa.AWSIdentityReference{
@@ -168,13 +230,43 @@ func createRandomClusterWithIdentity(annotationsKeyValues ...string) (*capa.AWSC
 		Kind: "AWSClusterRoleIdentity",
 	}
 
+	Expect(k8sClient.Create(context.Background(), capiCluster)).To(Succeed())
+	tests.PatchCAPIClusterStatus(k8sClient, capiCluster, capi.ClusterStatus{
+		Phase: "Running",
+	})
+
 	Expect(k8sClient.Create(context.Background(), awsCluster)).To(Succeed())
 	Expect(k8sClient.Create(context.Background(), identity)).To(Succeed())
 	tests.PatchAWSClusterStatus(k8sClient, awsCluster, capa.AWSClusterStatus{
 		Ready: true,
 	})
 
-	return identity, awsCluster
+	return identity, awsCluster, capiCluster
+}
+
+func createRandomEKSControlPlaneWithIdentity(annotationsKeyValues ...string) (*capa.AWSClusterRoleIdentity, *eks.AWSManagedControlPlane, *capi.Cluster) {
+	name := uuid.NewString()
+	eksCluster := newEksCluster(name, annotationsKeyValues...)
+	capiCluster := newCapiCluster(name, annotationsKeyValues...)
+	identity := newRoleIdentity()
+
+	eksCluster.Spec.IdentityRef = &capa.AWSIdentityReference{
+		Name: identity.Name,
+		Kind: "AWSClusterRoleIdentity",
+	}
+
+	Expect(k8sClient.Create(context.Background(), capiCluster)).To(Succeed())
+	tests.PatchCAPIClusterStatus(k8sClient, capiCluster, capi.ClusterStatus{
+		Phase: "Running",
+	})
+
+	Expect(k8sClient.Create(context.Background(), eksCluster)).To(Succeed())
+	Expect(k8sClient.Create(context.Background(), identity)).To(Succeed())
+	tests.PatchEKSClusterStatus(k8sClient, eksCluster, eks.AWSManagedControlPlaneStatus{
+		Ready: true,
+	})
+
+	return identity, eksCluster, capiCluster
 }
 
 func newRoleIdentity() *capa.AWSClusterRoleIdentity {

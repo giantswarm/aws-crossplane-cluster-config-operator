@@ -15,19 +15,22 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	capa "sigs.k8s.io/cluster-api-provider-aws/v2/api/v1beta2"
+	eks "sigs.k8s.io/cluster-api-provider-aws/v2/controlplane/eks/api/v1beta2"
+	capi "sigs.k8s.io/cluster-api/api/v1beta1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/giantswarm/aws-crossplane-cluster-config-operator/controllers"
 )
 
-var _ = Describe("ConfigMapReconciler", func() {
+var _ = Describe("ConfigMapReconcilerEKS", func() {
 	var (
 		ctx context.Context
 
-		accountID string
-		identity  *capa.AWSClusterRoleIdentity
-		cluster   *capa.AWSCluster
+		accountID       string
+		identity        *capa.AWSClusterRoleIdentity
+		ekscontrolplane *eks.AWSManagedControlPlane
+		capiCluster     *capi.Cluster
 
 		request    ctrl.Request
 		reconciler *controllers.ConfigMapReconciler
@@ -36,8 +39,8 @@ var _ = Describe("ConfigMapReconciler", func() {
 	verifyConfigMap := func() {
 		configMap := &corev1.ConfigMap{}
 		err := k8sClient.Get(ctx, types.NamespacedName{
-			Namespace: cluster.Namespace,
-			Name:      fmt.Sprintf("%s-crossplane-config", cluster.Name),
+			Namespace: capiCluster.Namespace,
+			Name:      fmt.Sprintf("%s-crossplane-config", capiCluster.Name),
 		}, configMap)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(configMap.Data).To(HaveKeyWithValue("values", MatchYAML(fmt.Sprintf(`
@@ -48,7 +51,7 @@ var _ = Describe("ConfigMapReconciler", func() {
                 clusterName: %s
                 region: the-region
                 awsPartition: aws
-            `, accountID, cluster.Name, cluster.Name))))
+            `, accountID, capiCluster.Name, capiCluster.Name))))
 	}
 
 	verifyProviderConfig := func() {
@@ -60,13 +63,13 @@ var _ = Describe("ConfigMapReconciler", func() {
 		})
 
 		err := k8sClient.Get(ctx, types.NamespacedName{
-			Namespace: cluster.Namespace,
-			Name:      cluster.Name,
+			Namespace: capiCluster.Namespace,
+			Name:      capiCluster.Name,
 		}, providerConfig)
 		Expect(err).NotTo(HaveOccurred())
 
 		Expect(providerConfig.Object).To(HaveKeyWithValue("metadata", MatchKeys(IgnoreExtras, Keys{
-			"name": Equal(cluster.Name),
+			"name": Equal(capiCluster.Name),
 		})))
 		Expect(providerConfig.Object).To(HaveKeyWithValue("spec", MatchKeys(IgnoreExtras, Keys{
 			"credentials": MatchKeys(IgnoreExtras, Keys{
@@ -84,7 +87,7 @@ var _ = Describe("ConfigMapReconciler", func() {
 	BeforeEach(func() {
 		ctx = context.Background()
 
-		identity, cluster = createRandomClusterWithIdentity()
+		identity, ekscontrolplane, capiCluster = createRandomEKSControlPlaneWithIdentity()
 		reconciler = &controllers.ConfigMapReconciler{
 			Client:       k8sClient,
 			BaseDomain:   "base.domain.io",
@@ -97,8 +100,8 @@ var _ = Describe("ConfigMapReconciler", func() {
 
 		request = ctrl.Request{
 			NamespacedName: types.NamespacedName{
-				Namespace: cluster.Namespace,
-				Name:      cluster.Name,
+				Namespace: ekscontrolplane.Namespace,
+				Name:      ekscontrolplane.Name,
 			},
 		}
 	})
@@ -110,7 +113,7 @@ var _ = Describe("ConfigMapReconciler", func() {
 	})
 
 	AfterEach(func() {
-		err := k8sClient.Delete(ctx, cluster)
+		err := k8sClient.Delete(ctx, capiCluster)
 		if k8serrors.IsNotFound(err) {
 			return
 		}
@@ -136,8 +139,8 @@ var _ = Describe("ConfigMapReconciler", func() {
 			someOtherAccount := "1234567"
 			configMap := &corev1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{
-					Namespace: cluster.Namespace,
-					Name:      fmt.Sprintf("%s-crossplane-config", cluster.Name),
+					Namespace: capiCluster.Namespace,
+					Name:      fmt.Sprintf("%s-crossplane-config", capiCluster.Name),
 				},
 			}
 			configMap.Data = map[string]string{
@@ -149,7 +152,7 @@ var _ = Describe("ConfigMapReconciler", func() {
                     baseDomain: %s.base.domain.io
                     clusterName: %s
                     region: some-other-region
-                `, someOtherAccount, cluster.Name, cluster.Name),
+                `, someOtherAccount, capiCluster.Name, capiCluster.Name),
 			}
 			err := k8sClient.Create(ctx, configMap)
 			Expect(err).NotTo(HaveOccurred())
@@ -157,8 +160,8 @@ var _ = Describe("ConfigMapReconciler", func() {
 			providerConfig := &unstructured.Unstructured{}
 			providerConfig.Object = map[string]interface{}{
 				"metadata": map[string]interface{}{
-					"name":      cluster.Name,
-					"namespace": cluster.Namespace,
+					"name":      capiCluster.Name,
+					"namespace": capiCluster.Namespace,
 				},
 				"spec": map[string]interface{}{
 					"credentials": map[string]interface{}{
@@ -194,29 +197,29 @@ var _ = Describe("ConfigMapReconciler", func() {
 
 	When("the cluster is deleted", func() {
 		BeforeEach(func() {
-			patchedCluster := cluster.DeepCopy()
+			patchedCluster := capiCluster.DeepCopy()
 			patchedCluster.Finalizers = []string{controllers.Finalizer}
 
-			err := k8sClient.Patch(context.Background(), patchedCluster, client.MergeFrom(cluster))
+			err := k8sClient.Patch(context.Background(), patchedCluster, client.MergeFrom(capiCluster))
 			Expect(err).NotTo(HaveOccurred())
 
-			err = k8sClient.Delete(context.Background(), cluster)
+			err = k8sClient.Delete(context.Background(), capiCluster)
 			Expect(err).NotTo(HaveOccurred())
 		})
 
 		It("removes the finalizer", func() {
 			err := k8sClient.Get(ctx, types.NamespacedName{
-				Namespace: cluster.Namespace,
-				Name:      cluster.Name,
-			}, cluster)
+				Namespace: capiCluster.Namespace,
+				Name:      capiCluster.Name,
+			}, capiCluster)
 			Expect(k8serrors.IsNotFound(err)).To(BeTrue())
 		})
 
 		It("removes the config map", func() {
 			configMap := &corev1.ConfigMap{}
 			err := k8sClient.Get(ctx, types.NamespacedName{
-				Namespace: cluster.Namespace,
-				Name:      fmt.Sprintf("%s-crossplane-config", cluster.Name),
+				Namespace: capiCluster.Namespace,
+				Name:      fmt.Sprintf("%s-crossplane-config", capiCluster.Name),
 			}, configMap)
 			Expect(k8serrors.IsNotFound(err)).To(BeTrue())
 		})
@@ -230,8 +233,8 @@ var _ = Describe("ConfigMapReconciler", func() {
 			})
 
 			err := k8sClient.Get(ctx, types.NamespacedName{
-				Namespace: cluster.Namespace,
-				Name:      cluster.Name,
+				Namespace: capiCluster.Namespace,
+				Name:      capiCluster.Name,
 			}, providerConfig)
 			Expect(k8serrors.IsNotFound(err)).To(BeTrue())
 		})
@@ -239,16 +242,16 @@ var _ = Describe("ConfigMapReconciler", func() {
 
 	When("the cluster is in china", func() {
 		BeforeEach(func() {
-			cluster.Spec.Region = "cn-north-1"
-			err := k8sClient.Update(ctx, cluster)
+			ekscontrolplane.Spec.Region = "cn-north-1"
+			err := k8sClient.Update(ctx, ekscontrolplane)
 			Expect(err).NotTo(HaveOccurred())
 		})
 
 		It("creates the configmap with the correct aws partition", func() {
 			configMap := &corev1.ConfigMap{}
 			err := k8sClient.Get(ctx, types.NamespacedName{
-				Namespace: cluster.Namespace,
-				Name:      fmt.Sprintf("%s-crossplane-config", cluster.Name),
+				Namespace: capiCluster.Namespace,
+				Name:      fmt.Sprintf("%s-crossplane-config", capiCluster.Name),
 			}, configMap)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(configMap.Data).To(HaveKeyWithValue("values", MatchYAML(fmt.Sprintf(`
@@ -259,7 +262,7 @@ var _ = Describe("ConfigMapReconciler", func() {
                 clusterName: %s
                 region: cn-north-1
                 awsPartition: aws-cn
-            `, accountID, cluster.Name, cluster.Name))))
+            `, accountID, capiCluster.Name, capiCluster.Name))))
 		})
 
 		It("creates the provider config with the correct aws partition", func() {
@@ -271,13 +274,13 @@ var _ = Describe("ConfigMapReconciler", func() {
 			})
 
 			err := k8sClient.Get(ctx, types.NamespacedName{
-				Namespace: cluster.Namespace,
-				Name:      cluster.Name,
+				Namespace: capiCluster.Namespace,
+				Name:      capiCluster.Name,
 			}, providerConfig)
 			Expect(err).NotTo(HaveOccurred())
 
 			Expect(providerConfig.Object).To(HaveKeyWithValue("metadata", MatchKeys(IgnoreExtras, Keys{
-				"name": Equal(cluster.Name),
+				"name": Equal(capiCluster.Name),
 			})))
 			Expect(providerConfig.Object).To(HaveKeyWithValue("spec", MatchKeys(IgnoreExtras, Keys{
 				"credentials": MatchKeys(IgnoreExtras, Keys{
@@ -295,38 +298,35 @@ var _ = Describe("ConfigMapReconciler", func() {
 
 	When("the cluster is provisioned by CAPA", func() {
 		BeforeEach(func() {
-			cluster.Spec.NetworkSpec.VPC.ID = "vpc-123456"
-			err := k8sClient.Update(ctx, cluster)
+			ekscontrolplane.Spec.NetworkSpec.VPC.ID = "vpc-123456"
+			err := k8sClient.Update(ctx, ekscontrolplane)
 			Expect(err).NotTo(HaveOccurred())
 
-			cluster.Status.Network.SecurityGroups = map[capa.SecurityGroupRole]capa.SecurityGroup{
+			ekscontrolplane.Status.Network.SecurityGroups = map[capa.SecurityGroupRole]capa.SecurityGroup{
 				capa.SecurityGroupControlPlane: {
 					ID: "sg-789987",
 				},
 			}
-			err = k8sClient.Status().Update(ctx, cluster)
+			err = k8sClient.Status().Update(ctx, ekscontrolplane)
 			Expect(err).NotTo(HaveOccurred())
 		})
 
 		It("creates the configmap with the correct VPC ID and security group ID(s)", func() {
 			configMap := &corev1.ConfigMap{}
 			err := k8sClient.Get(ctx, types.NamespacedName{
-				Namespace: cluster.Namespace,
-				Name:      fmt.Sprintf("%s-crossplane-config", cluster.Name),
+				Namespace: capiCluster.Namespace,
+				Name:      fmt.Sprintf("%s-crossplane-config", capiCluster.Name),
 			}, configMap)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(configMap.Data).To(HaveKeyWithValue("values", MatchYAML(fmt.Sprintf(`
                 accountID: "%s"
                 awsCluster:
-                  securityGroups:
-                    controlPlane:
-                      id: sg-789987
                   vpcId: vpc-123456
                 awsPartition: aws
                 baseDomain: %s.base.domain.io
                 clusterName: %s
                 region: the-region
-            `, accountID, cluster.Name, cluster.Name))))
+            `, accountID, capiCluster.Name, capiCluster.Name))))
 		})
 	})
 
