@@ -344,7 +344,7 @@ func (r *ConfigMapReconciler) AddFinalizer(ctx context.Context, capiCluster *cap
 
 func (r *ConfigMapReconciler) RemoveFinalizer(ctx context.Context, capiCluster *capi.Cluster) error {
 
-	//check if there is an AWSCluster with the same name and namespace as the capiCluster and remove the finalizer. This enables the migration of the finalizer from CAPA Cluster CR to CAPI Cluster CR
+	// Check if there is an AWSCluster with the same name and namespace, and remove the finalizer. This enables the migration of the finalizer from `AWSCluster` to `Cluster`.
 	awsCluster := &capa.AWSCluster{}
 	err := r.Client.Get(ctx, types.NamespacedName{
 		Name:      capiCluster.Name,
