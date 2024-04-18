@@ -86,14 +86,39 @@ func (r *ConfigMapReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		return r.reconcileDelete(ctx, capiCluster)
 	}
 
-	err = r.Client.Get(ctx, req.NamespacedName, awsCluster)
-	if err == nil {
+	if IsEKS(*capiCluster) {
+		err := r.Client.Get(ctx, req.NamespacedName, ekscontrolplane)
+		if err != nil {
+			logger.Error(err, "failed to get cluster")
+			return ctrl.Result{}, errors.WithStack(client.IgnoreNotFound(err))
+		}
+
+		clusterInfo.Name = ekscontrolplane.Name
+		clusterInfo.Namespace = ekscontrolplane.Namespace
+		clusterInfo.Region = ekscontrolplane.Spec.Region
+		clusterInfo.AWSPartition = getPartition(clusterInfo.Region)
+		clusterInfo.VpcID = ekscontrolplane.Spec.NetworkSpec.VPC.ID
+		clusterInfo.RoleArn, err = r.getRoleArn(ctx, ekscontrolplane.Spec.IdentityRef.Name, ekscontrolplane.Namespace)
+		if err != nil {
+			logger.Error(err, "failed to get cluster role identity")
+			return ctrl.Result{}, errors.WithStack(client.IgnoreNotFound(err))
+		}
+	} else {
+		err = r.Client.Get(ctx, req.NamespacedName, awsCluster)
+		if err != nil {
+			logger.Error(err, "failed to get cluster")
+			return ctrl.Result{}, errors.WithStack(client.IgnoreNotFound(err))
+		}
 		clusterInfo.Name = awsCluster.Name
 		clusterInfo.Namespace = awsCluster.Namespace
 		clusterInfo.Region = awsCluster.Spec.Region
 		clusterInfo.AWSPartition = getPartition(clusterInfo.Region)
 		clusterInfo.VpcID = awsCluster.Spec.NetworkSpec.VPC.ID
 		clusterInfo.RoleArn, err = r.getRoleArn(ctx, awsCluster.Spec.IdentityRef.Name, awsCluster.Namespace)
+		if err != nil {
+			logger.Error(err, "failed to get cluster role identity")
+			return ctrl.Result{}, errors.WithStack(client.IgnoreNotFound(err))
+		}
 		if sg, ok := awsCluster.Status.Network.SecurityGroups[capa.SecurityGroupControlPlane]; ok {
 			if clusterInfo.SecurityGroups == nil {
 				clusterInfo.SecurityGroups = &crossplaneConfigValuesAWSClusterSecurityGroups{}
@@ -102,34 +127,16 @@ func (r *ConfigMapReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 				ID: sg.ID,
 			}
 		}
-		if err != nil {
-			logger.Error(err, "failed to get cluster role identity")
-			return ctrl.Result{}, errors.WithStack(client.IgnoreNotFound(err))
-		}
-	} else {
-		if k8serrors.IsNotFound(err) {
-			err := r.Client.Get(ctx, req.NamespacedName, ekscontrolplane)
-			if err != nil {
-				logger.Error(err, "failed to get cluster")
-				return ctrl.Result{}, errors.WithStack(client.IgnoreNotFound(err))
-			}
-
-			clusterInfo.Name = ekscontrolplane.Name
-			clusterInfo.Namespace = ekscontrolplane.Namespace
-			clusterInfo.Region = ekscontrolplane.Spec.Region
-			clusterInfo.AWSPartition = getPartition(clusterInfo.Region)
-			clusterInfo.VpcID = ekscontrolplane.Spec.NetworkSpec.VPC.ID
-			clusterInfo.RoleArn, err = r.getRoleArn(ctx, ekscontrolplane.Spec.IdentityRef.Name, ekscontrolplane.Namespace)
-			if err != nil {
-				logger.Error(err, "failed to get cluster role identity")
-				return ctrl.Result{}, errors.WithStack(client.IgnoreNotFound(err))
-			}
-
-		}
-
 	}
 
 	return r.reconcileNormal(ctx, clusterInfo)
+}
+
+func IsEKS(cluster capi.Cluster) bool {
+	return cluster.Spec.ControlPlaneRef != nil &&
+		cluster.Spec.ControlPlaneRef.Kind == "AWSManagedControlPlane" &&
+		cluster.Spec.InfrastructureRef != nil &&
+		cluster.Spec.InfrastructureRef.Kind == "AWSManagedCluster"
 }
 
 func (r *ConfigMapReconciler) getRoleArn(ctx context.Context, idRef string, namespace string) (arn.ARN, error) {

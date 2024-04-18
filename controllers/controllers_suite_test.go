@@ -250,6 +250,13 @@ func createRandomEKSControlPlaneWithIdentity(annotationsKeyValues ...string) (*c
 	capiCluster := newCapiCluster(name, annotationsKeyValues...)
 	identity := newRoleIdentity()
 
+	capiCluster.Spec.InfrastructureRef = &corev1.ObjectReference{
+		Kind: "AWSManagedCluster",
+	}
+	capiCluster.Spec.ControlPlaneRef = &corev1.ObjectReference{
+		Kind: "AWSManagedControlPlane",
+	}
+
 	eksCluster.Spec.IdentityRef = &capa.AWSIdentityReference{
 		Name: identity.Name,
 		Kind: "AWSClusterRoleIdentity",
