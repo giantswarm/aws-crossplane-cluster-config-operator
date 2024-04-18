@@ -87,24 +87,24 @@ func (r *ConfigMapReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	}
 
 	if IsEKS(*capiCluster) {
-		ekscontrolplane := &eks.AWSManagedControlPlane{}
-		err := r.Client.Get(ctx, req.NamespacedName, ekscontrolplane)
+		awsManagedControlPlane := &eks.AWSManagedControlPlane{}
+		err := r.Client.Get(ctx, req.NamespacedName, awsManagedControlPlane)
 		if err != nil {
 			logger.Error(err, "failed to get cluster")
 			return ctrl.Result{}, errors.WithStack(client.IgnoreNotFound(err))
 		}
 
-		clusterInfo.Name = ekscontrolplane.Name
-		clusterInfo.Namespace = ekscontrolplane.Namespace
-		clusterInfo.Region = ekscontrolplane.Spec.Region
+		clusterInfo.Name = awsManagedControlPlane.Name
+		clusterInfo.Namespace = awsManagedControlPlane.Namespace
+		clusterInfo.Region = awsManagedControlPlane.Spec.Region
 		clusterInfo.AWSPartition = getPartition(clusterInfo.Region)
-		clusterInfo.VpcID = ekscontrolplane.Spec.NetworkSpec.VPC.ID
-		clusterInfo.RoleArn, err = r.getRoleArn(ctx, ekscontrolplane.Spec.IdentityRef.Name, ekscontrolplane.Namespace)
+		clusterInfo.VpcID = awsManagedControlPlane.Spec.NetworkSpec.VPC.ID
+		clusterInfo.RoleArn, err = r.getRoleArn(ctx, awsManagedControlPlane.Spec.IdentityRef.Name, awsManagedControlPlane.Namespace)
 		if err != nil {
 			logger.Error(err, "failed to get cluster role identity")
 			return ctrl.Result{}, errors.WithStack(client.IgnoreNotFound(err))
 		}
-		eksId, err := getEKSId(ekscontrolplane.Spec.ControlPlaneEndpoint.Host)
+		eksId, err := getEKSId(awsManagedControlPlane.Spec.ControlPlaneEndpoint.Host)
 		if err != nil {
 			logger.Error(err, "failed to get EKS Cluster ID")
 			return ctrl.Result{}, errors.WithStack(client.IgnoreNotFound(err))
