@@ -48,9 +48,10 @@ var _ = Describe("ConfigMapReconcilerCAPA", func() {
                   vpcId: vpc-1
                 baseDomain: %s.base.domain.io
                 clusterName: %s
+                oidcDomain: irsa.%s.base.domain.io
                 region: the-region
                 awsPartition: aws
-            `, accountID, capiCluster.Name, capiCluster.Name))))
+            `, accountID, capiCluster.Name, capiCluster.Name, capiCluster.Name))))
 	}
 
 	verifyProviderConfig := func() {
@@ -149,9 +150,10 @@ var _ = Describe("ConfigMapReconcilerCAPA", func() {
                         vpcId: vpc-1
                     awsPartition: cn
                     baseDomain: %s.base.domain.io
+					oidcDomain: irsa.%s.base.domain.io
                     clusterName: %s
                     region: some-other-region
-                `, someOtherAccount, capiCluster.Name, capiCluster.Name),
+                `, someOtherAccount, capiCluster.Name, capiCluster.Name, capiCluster.Name),
 			}
 			err := k8sClient.Create(ctx, configMap)
 			Expect(err).NotTo(HaveOccurred())
@@ -275,10 +277,11 @@ var _ = Describe("ConfigMapReconcilerCAPA", func() {
                 awsCluster:
                   vpcId: vpc-1
                 baseDomain: %s.base.domain.io
+                oidcDomain: irsa.%s.base.domain.io
                 clusterName: %s
                 region: cn-north-1
                 awsPartition: aws-cn
-            `, accountID, capiCluster.Name, capiCluster.Name))))
+            `, accountID, capiCluster.Name, capiCluster.Name, capiCluster.Name))))
 		})
 
 		It("creates the provider config with the correct aws partition", func() {
@@ -343,9 +346,10 @@ var _ = Describe("ConfigMapReconcilerCAPA", func() {
                   vpcId: vpc-123456
                 awsPartition: aws
                 baseDomain: %s.base.domain.io
+                oidcDomain: irsa.%s.base.domain.io
                 clusterName: %s
                 region: the-region
-            `, accountID, capiCluster.Name, capiCluster.Name))))
+            `, accountID, capiCluster.Name, capiCluster.Name, capiCluster.Name))))
 		})
 	})
 

@@ -19,6 +19,7 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"net/url"
 	"strings"
 
 	"github.com/aws/aws-sdk-go/aws/arn"
@@ -56,6 +57,7 @@ type ClusterInfo struct {
 	AWSPartition   string
 	VpcID          string
 	RoleArn        arn.ARN
+	OIDCDomain     string
 	SecurityGroups *crossplaneConfigValuesAWSClusterSecurityGroups
 }
 
@@ -103,6 +105,14 @@ func (r *ConfigMapReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			logger.Error(err, "failed to get cluster role identity")
 			return ctrl.Result{}, errors.WithStack(client.IgnoreNotFound(err))
 		}
+		eksId, err := getEKSId(ekscontrolplane.Spec.ControlPlaneEndpoint.Host)
+		if err != nil {
+			logger.Error(err, "failed to get EKS Cluster ID")
+			return ctrl.Result{}, errors.WithStack(client.IgnoreNotFound(err))
+		}
+		clusterInfo.OIDCDomain = "oidc.eks." + clusterInfo.Region + ".amazonaws.com/id/" + eksId
+		logger.Info(clusterInfo.OIDCDomain)
+
 	} else {
 		err = r.Client.Get(ctx, req.NamespacedName, awsCluster)
 		if err != nil {
@@ -119,6 +129,7 @@ func (r *ConfigMapReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			logger.Error(err, "failed to get cluster role identity")
 			return ctrl.Result{}, errors.WithStack(client.IgnoreNotFound(err))
 		}
+		clusterInfo.OIDCDomain = "irsa." + clusterInfo.Name + "." + r.BaseDomain
 		if sg, ok := awsCluster.Status.Network.SecurityGroups[capa.SecurityGroupControlPlane]; ok {
 			if clusterInfo.SecurityGroups == nil {
 				clusterInfo.SecurityGroups = &crossplaneConfigValuesAWSClusterSecurityGroups{}
@@ -137,6 +148,22 @@ func IsEKS(cluster capi.Cluster) bool {
 		cluster.Spec.ControlPlaneRef.Kind == "AWSManagedControlPlane" &&
 		cluster.Spec.InfrastructureRef != nil &&
 		cluster.Spec.InfrastructureRef.Kind == "AWSManagedCluster"
+}
+
+func getEKSId(urlString string) (string, error) {
+	u, err := url.Parse(urlString)
+	if err != nil {
+		return "", err
+	}
+
+	// The host part of the URL is in the form of "ED3AA07D016EA49EEBC31AB274E7F3DD.sk1.eu-west-2.eks.amazonaws.com"
+	// We can split it by '.' and take the first part
+	parts := strings.Split(u.Hostname(), ".")
+	if len(parts) > 0 {
+		return parts[0], nil
+	}
+
+	return "", fmt.Errorf("unable to extract ID from URL")
 }
 
 func (r *ConfigMapReconciler) getRoleArn(ctx context.Context, idRef string, namespace string) (arn.ARN, error) {
@@ -208,6 +235,7 @@ type crossplaneConfigValues struct {
 	BaseDomain   string                           `json:"baseDomain"`
 	ClusterName  string                           `json:"clusterName"`
 	Region       string                           `json:"region"`
+	OIDCDomain   string                           `json:"oidcDomain"`
 }
 
 type crossplaneConfigValuesAWSCluster struct {
@@ -458,6 +486,7 @@ func getConfigMapValues(clusterInfo *ClusterInfo, accountID, baseDomain string) 
 		BaseDomain:   fmt.Sprintf("%s.%s", clusterInfo.Name, baseDomain),
 		ClusterName:  clusterInfo.Name,
 		Region:       clusterInfo.Region,
+		OIDCDomain:   clusterInfo.OIDCDomain,
 	}
 
 	configMapValues, err := yaml.Marshal(values)
