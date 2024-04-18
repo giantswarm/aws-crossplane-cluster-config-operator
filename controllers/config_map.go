@@ -71,8 +71,6 @@ func (r *ConfigMapReconciler) SetupWithManager(mgr ctrl.Manager) error {
 func (r *ConfigMapReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	logger := log.FromContext(ctx)
 
-	awsCluster := &capa.AWSCluster{}
-	ekscontrolplane := &eks.AWSManagedControlPlane{}
 	clusterInfo := &ClusterInfo{}
 
 	capiCluster := &capi.Cluster{}
@@ -89,6 +87,7 @@ func (r *ConfigMapReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	}
 
 	if IsEKS(*capiCluster) {
+		ekscontrolplane := &eks.AWSManagedControlPlane{}
 		err := r.Client.Get(ctx, req.NamespacedName, ekscontrolplane)
 		if err != nil {
 			logger.Error(err, "failed to get cluster")
@@ -114,6 +113,7 @@ func (r *ConfigMapReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		logger.Info(clusterInfo.OIDCDomain)
 
 	} else {
+		awsCluster := &capa.AWSCluster{}
 		err = r.Client.Get(ctx, req.NamespacedName, awsCluster)
 		if err != nil {
 			logger.Error(err, "failed to get cluster")
