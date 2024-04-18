@@ -343,9 +343,6 @@ func (r *ConfigMapReconciler) AddFinalizer(ctx context.Context, capiCluster *cap
 }
 
 func (r *ConfigMapReconciler) RemoveFinalizer(ctx context.Context, capiCluster *capi.Cluster) error {
-	originalCluster := capiCluster.DeepCopy()
-	controllerutil.RemoveFinalizer(capiCluster, Finalizer)
-	error := r.Client.Patch(ctx, capiCluster, client.MergeFrom(originalCluster))
 
 	//check if there is an AWSCluster with the same name and namespace as the capiCluster and remove the finalizer. This enables the migration of the finalizer from CAPA Cluster CR to CAPI Cluster CR
 	awsCluster := &capa.AWSCluster{}
@@ -362,7 +359,14 @@ func (r *ConfigMapReconciler) RemoveFinalizer(ctx context.Context, capiCluster *
 		}
 	}
 
-	return error
+	originalCluster := capiCluster.DeepCopy()
+	controllerutil.RemoveFinalizer(capiCluster, Finalizer)
+	err = r.Client.Patch(ctx, capiCluster, client.MergeFrom(originalCluster))
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	return err
 }
 
 func (r *ConfigMapReconciler) createConfigMap(ctx context.Context, clusterInfo *ClusterInfo, accountID, baseDomain string) error {
