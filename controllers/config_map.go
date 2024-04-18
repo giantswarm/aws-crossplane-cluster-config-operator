@@ -350,12 +350,15 @@ func (r *ConfigMapReconciler) RemoveFinalizer(ctx context.Context, capiCluster *
 		Name:      capiCluster.Name,
 		Namespace: capiCluster.Namespace,
 	}, awsCluster)
+	if client.IgnoreNotFound(err) != nil {
+		return err
+	}
 	if err == nil {
 		originalAWSCluster := awsCluster.DeepCopy()
 		controllerutil.RemoveFinalizer(awsCluster, Finalizer)
 		err = r.Client.Patch(ctx, awsCluster, client.MergeFrom(originalAWSCluster))
 		if err != nil {
-			return errors.WithStack(err)
+			return err
 		}
 	}
 
@@ -363,7 +366,7 @@ func (r *ConfigMapReconciler) RemoveFinalizer(ctx context.Context, capiCluster *
 	controllerutil.RemoveFinalizer(capiCluster, Finalizer)
 	err = r.Client.Patch(ctx, capiCluster, client.MergeFrom(originalCluster))
 	if err != nil {
-		return errors.WithStack(err)
+		return err
 	}
 
 	return err
