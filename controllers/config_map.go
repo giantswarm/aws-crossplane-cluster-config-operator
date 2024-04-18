@@ -145,9 +145,7 @@ func (r *ConfigMapReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 func IsEKS(cluster capi.Cluster) bool {
 	return cluster.Spec.ControlPlaneRef != nil &&
-		cluster.Spec.ControlPlaneRef.Kind == "AWSManagedControlPlane" &&
-		cluster.Spec.InfrastructureRef != nil &&
-		cluster.Spec.InfrastructureRef.Kind == "AWSManagedCluster"
+		cluster.Spec.ControlPlaneRef.Kind == "AWSManagedControlPlane"
 }
 
 func getEKSId(urlString string) (string, error) {
