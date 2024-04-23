@@ -117,7 +117,6 @@ func (r *ConfigMapReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		}
 
 		clusterInfo.OIDCDomain = "oidc.eks." + clusterInfo.Region + "." + dnsSuffix + "/id/" + eksId
-		logger.Info(clusterInfo.OIDCDomain)
 
 	} else {
 		awsCluster := &capa.AWSCluster{}
