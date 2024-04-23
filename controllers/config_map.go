@@ -109,7 +109,14 @@ func (r *ConfigMapReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			logger.Error(err, "failed to get EKS Cluster ID")
 			return ctrl.Result{}, errors.WithStack(client.IgnoreNotFound(err))
 		}
-		clusterInfo.OIDCDomain = "oidc.eks." + clusterInfo.Region + ".amazonaws.com/id/" + eksId
+
+		dnsSuffix := "amazonaws.com"
+
+		if clusterInfo.Region == "cn-north-1" || clusterInfo.Region == "cn-northwest-1" {
+			dnsSuffix = "amazonaws.com.cn"
+		}
+
+		clusterInfo.OIDCDomain = "oidc.eks." + clusterInfo.Region + "." + dnsSuffix + "/id/" + eksId
 		logger.Info(clusterInfo.OIDCDomain)
 
 	} else {

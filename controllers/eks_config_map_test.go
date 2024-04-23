@@ -151,7 +151,7 @@ var _ = Describe("ConfigMapReconcilerEKS", func() {
                         vpcId: vpc-1
                     awsPartition: cn
                     baseDomain: %s.base.domain.io
-                    oidcDomain: oidc.eks.some-other-region.amazonaws.com/id/eks123clusterID
+                    oidcDomain: oidc.eks.some-other-region.amazonaws.com.cn/id/eks123clusterID
                     clusterName: %s
                     region: some-other-region
                 `, someOtherAccount, capiCluster.Name, capiCluster.Name),
@@ -261,7 +261,7 @@ var _ = Describe("ConfigMapReconcilerEKS", func() {
                 awsCluster:
                   vpcId: vpc-1
                 baseDomain: %s.base.domain.io
-                oidcDomain: oidc.eks.cn-north-1.amazonaws.com/id/eks123clusterID
+                oidcDomain: oidc.eks.cn-north-1.amazonaws.com.cn/id/eks123clusterID
                 clusterName: %s
                 region: cn-north-1
                 awsPartition: aws-cn
