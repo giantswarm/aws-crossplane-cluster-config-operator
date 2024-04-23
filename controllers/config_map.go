@@ -302,7 +302,7 @@ func (r *ConfigMapReconciler) reconcileProviderConfig(ctx context.Context, clust
 	return r.updateProviderConfig(ctx, providerConfig, accountID, clusterInfo.Region)
 }
 
-func (r *ConfigMapReconciler) reconcileDelete(ctx context.Context, capiCluster *capi.Cluster) (ctrl.Result, error) {
+func (r *ConfigMapReconciler) reconcileDelete(ctx context.Context, cluster *capi.Cluster) (ctrl.Result, error) {
 	logger := log.FromContext(ctx)
 	logger.Info("Reconcile delete")
 	defer logger.Info("Done deleting")
