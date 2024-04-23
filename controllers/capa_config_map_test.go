@@ -150,7 +150,7 @@ var _ = Describe("ConfigMapReconcilerCAPA", func() {
                         vpcId: vpc-1
                     awsPartition: cn
                     baseDomain: %s.base.domain.io
-					oidcDomain: irsa.%s.base.domain.io
+                    oidcDomain: irsa.%s.base.domain.io
                     clusterName: %s
                     region: some-other-region
                 `, someOtherAccount, cluster.Name, cluster.Name, cluster.Name),
