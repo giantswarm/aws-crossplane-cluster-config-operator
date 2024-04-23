@@ -342,7 +342,7 @@ func (r *ConfigMapReconciler) reconcileDelete(ctx context.Context, cluster *capi
 	return ctrl.Result{}, nil
 }
 
-func (r *ConfigMapReconciler) AddFinalizer(ctx context.Context, capiCluster *capi.Cluster) error {
+func (r *ConfigMapReconciler) AddFinalizer(ctx context.Context, cluster *capi.Cluster) error {
 	originalCluster := capiCluster.DeepCopy()
 	controllerutil.AddFinalizer(capiCluster, Finalizer)
 	return r.Client.Patch(ctx, capiCluster, client.MergeFrom(originalCluster))
