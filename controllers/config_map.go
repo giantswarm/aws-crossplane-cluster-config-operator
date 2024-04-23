@@ -74,19 +74,19 @@ func (r *ConfigMapReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	clusterInfo := &ClusterInfo{}
 
 	cluster := &capi.Cluster{}
-	err := r.Client.Get(ctx, req.NamespacedName, capiCluster)
+	err := r.Client.Get(ctx, req.NamespacedName, cluster)
 
 	if err != nil {
 		logger.Error(err, "failed to get cluster")
 		return ctrl.Result{}, errors.WithStack(client.IgnoreNotFound(err))
 	}
 
-	if !capiCluster.DeletionTimestamp.IsZero() {
+	if !cluster.DeletionTimestamp.IsZero() {
 		logger.Info("Reconciling delete")
-		return r.reconcileDelete(ctx, capiCluster)
+		return r.reconcileDelete(ctx, cluster)
 	}
 
-	if IsEKS(*capiCluster) {
+	if IsEKS(*cluster) {
 		awsManagedControlPlane := &eks.AWSManagedControlPlane{}
 		err := r.Client.Get(ctx, req.NamespacedName, awsManagedControlPlane)
 		if err != nil {
@@ -309,8 +309,8 @@ func (r *ConfigMapReconciler) reconcileDelete(ctx context.Context, cluster *capi
 
 	config := &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      fmt.Sprintf("%s-crossplane-config", capiCluster.Name),
-			Namespace: capiCluster.Namespace,
+			Name:      fmt.Sprintf("%s-crossplane-config", cluster.Name),
+			Namespace: cluster.Namespace,
 		},
 	}
 
@@ -321,7 +321,7 @@ func (r *ConfigMapReconciler) reconcileDelete(ctx context.Context, cluster *capi
 		return ctrl.Result{}, errors.WithStack(err)
 	}
 
-	providerConfig := getProviderConfig(capiCluster.Name, capiCluster.Namespace)
+	providerConfig := getProviderConfig(cluster.Name, cluster.Namespace)
 	logger.Info("Deleting ProviderConfig")
 	err = r.Client.Delete(ctx, providerConfig)
 	if err != nil &&
@@ -333,7 +333,7 @@ func (r *ConfigMapReconciler) reconcileDelete(ctx context.Context, cluster *capi
 	}
 
 	logger.Info("Removing Finalizer")
-	err = r.RemoveFinalizer(ctx, capiCluster)
+	err = r.RemoveFinalizer(ctx, cluster)
 	if err != nil {
 		logger.Error(err, "failed to remove finalizer")
 		return ctrl.Result{}, errors.WithStack(err)
@@ -343,9 +343,9 @@ func (r *ConfigMapReconciler) reconcileDelete(ctx context.Context, cluster *capi
 }
 
 func (r *ConfigMapReconciler) AddFinalizer(ctx context.Context, cluster *capi.Cluster) error {
-	originalCluster := capiCluster.DeepCopy()
-	controllerutil.AddFinalizer(capiCluster, Finalizer)
-	return r.Client.Patch(ctx, capiCluster, client.MergeFrom(originalCluster))
+	originalCluster := cluster.DeepCopy()
+	controllerutil.AddFinalizer(cluster, Finalizer)
+	return r.Client.Patch(ctx, cluster, client.MergeFrom(originalCluster))
 }
 
 func (r *ConfigMapReconciler) RemoveFinalizer(ctx context.Context, cluster *capi.Cluster) error {
@@ -353,8 +353,8 @@ func (r *ConfigMapReconciler) RemoveFinalizer(ctx context.Context, cluster *capi
 	// Check if there is an AWSCluster with the same name and namespace, and remove the finalizer. This enables the migration of the finalizer from `AWSCluster` to `Cluster`.
 	awsCluster := &capa.AWSCluster{}
 	err := r.Client.Get(ctx, types.NamespacedName{
-		Name:      capiCluster.Name,
-		Namespace: capiCluster.Namespace,
+		Name:      cluster.Name,
+		Namespace: cluster.Namespace,
 	}, awsCluster)
 	if client.IgnoreNotFound(err) != nil {
 		return err
@@ -368,9 +368,9 @@ func (r *ConfigMapReconciler) RemoveFinalizer(ctx context.Context, cluster *capi
 		}
 	}
 
-	originalCluster := capiCluster.DeepCopy()
-	controllerutil.RemoveFinalizer(capiCluster, Finalizer)
-	err = r.Client.Patch(ctx, capiCluster, client.MergeFrom(originalCluster))
+	originalCluster := cluster.DeepCopy()
+	controllerutil.RemoveFinalizer(cluster, Finalizer)
+	err = r.Client.Patch(ctx, cluster, client.MergeFrom(originalCluster))
 	if err != nil {
 		return err
 	}

@@ -249,7 +249,7 @@ func createRandomCapaClusterWithIdentity(annotationsKeyValues ...string) (*capa.
 	return identity, awsCluster, capiCluster
 }
 
-func createRandomEKSControlPlaneWithIdentity(annotationsKeyValues ...string) (*capa.AWSClusterRoleIdentity, *eks.AWSManagedControlPlane, *capi.Cluster) {
+func createRandomAwsManagedControlplaneWithIdentity(annotationsKeyValues ...string) (*capa.AWSClusterRoleIdentity, *eks.AWSManagedControlPlane, *capi.Cluster) {
 	name := uuid.NewString()
 	eksCluster := newEksCluster(name, annotationsKeyValues...)
 	capiCluster := newCapiCluster(name, annotationsKeyValues...)
