@@ -29,7 +29,7 @@ var _ = Describe("ConfigMapReconcilerEKS", func() {
 
 		accountID       string
 		identity        *capa.AWSClusterRoleIdentity
-		ekscontrolplane *eks.AWSManagedControlPlane
+		awsManagedControlplane *eks.AWSManagedControlPlane
 		cluster     *capi.Cluster
 
 		request    ctrl.Request
