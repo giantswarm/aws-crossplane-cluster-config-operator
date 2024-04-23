@@ -73,7 +73,7 @@ func (r *ConfigMapReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 	clusterInfo := &ClusterInfo{}
 
-	capiCluster := &capi.Cluster{}
+	cluster := &capi.Cluster{}
 	err := r.Client.Get(ctx, req.NamespacedName, capiCluster)
 
 	if err != nil {
