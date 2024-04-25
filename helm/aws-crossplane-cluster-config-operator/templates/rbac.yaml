@@ -19,6 +19,16 @@ rules:
       - patch
       - watch
   - apiGroups:
+      - cluster.x-k8s.io
+    resources:
+      - clusters
+      - clusters/status
+    verbs:
+      - get
+      - list
+      - patch
+      - watch
+  - apiGroups:
       - infrastructure.cluster.x-k8s.io
     resources:
       - awsclusters
@@ -32,6 +42,14 @@ rules:
       - infrastructure.cluster.x-k8s.io
     resources:
       - awsclusterroleidentities
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - controlplane.cluster.x-k8s.io
+    resources:
+      - awsmanagedcontrolplanes
     verbs:
       - get
       - list

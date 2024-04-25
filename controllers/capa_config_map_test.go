@@ -15,19 +15,21 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	capa "sigs.k8s.io/cluster-api-provider-aws/v2/api/v1beta2"
+	capi "sigs.k8s.io/cluster-api/api/v1beta1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/giantswarm/aws-crossplane-cluster-config-operator/controllers"
 )
 
-var _ = Describe("ConfigMapReconciler", func() {
+var _ = Describe("ConfigMapReconcilerCAPA", func() {
 	var (
 		ctx context.Context
 
-		accountID string
-		identity  *capa.AWSClusterRoleIdentity
-		cluster   *capa.AWSCluster
+		accountID  string
+		identity   *capa.AWSClusterRoleIdentity
+		awsCluster *capa.AWSCluster
+		cluster    *capi.Cluster
 
 		request    ctrl.Request
 		reconciler *controllers.ConfigMapReconciler
@@ -46,9 +48,10 @@ var _ = Describe("ConfigMapReconciler", func() {
                   vpcId: vpc-1
                 baseDomain: %s.base.domain.io
                 clusterName: %s
+                oidcDomain: irsa.%s.base.domain.io
                 region: the-region
                 awsPartition: aws
-            `, accountID, cluster.Name, cluster.Name))))
+            `, accountID, cluster.Name, cluster.Name, cluster.Name))))
 	}
 
 	verifyProviderConfig := func() {
@@ -84,7 +87,7 @@ var _ = Describe("ConfigMapReconciler", func() {
 	BeforeEach(func() {
 		ctx = context.Background()
 
-		identity, cluster = createRandomClusterWithIdentity()
+		identity, awsCluster, cluster = createRandomCapaClusterWithIdentity()
 		reconciler = &controllers.ConfigMapReconciler{
 			Client:       k8sClient,
 			BaseDomain:   "base.domain.io",
@@ -97,8 +100,8 @@ var _ = Describe("ConfigMapReconciler", func() {
 
 		request = ctrl.Request{
 			NamespacedName: types.NamespacedName{
-				Namespace: cluster.Namespace,
-				Name:      cluster.Name,
+				Namespace: awsCluster.Namespace,
+				Name:      awsCluster.Name,
 			},
 		}
 	})
@@ -147,9 +150,10 @@ var _ = Describe("ConfigMapReconciler", func() {
                         vpcId: vpc-1
                     awsPartition: cn
                     baseDomain: %s.base.domain.io
+                    oidcDomain: irsa.%s.base.domain.io
                     clusterName: %s
                     region: some-other-region
-                `, someOtherAccount, cluster.Name, cluster.Name),
+                `, someOtherAccount, cluster.Name, cluster.Name, cluster.Name),
 			}
 			err := k8sClient.Create(ctx, configMap)
 			Expect(err).NotTo(HaveOccurred())
@@ -202,13 +206,30 @@ var _ = Describe("ConfigMapReconciler", func() {
 
 			err = k8sClient.Delete(context.Background(), cluster)
 			Expect(err).NotTo(HaveOccurred())
+
+			patchedCapaCluster := awsCluster.DeepCopy()
+			patchedCapaCluster.Finalizers = []string{controllers.Finalizer}
+
+			err = k8sClient.Patch(context.Background(), patchedCapaCluster, client.MergeFrom(awsCluster))
+			Expect(err).NotTo(HaveOccurred())
+
+			err = k8sClient.Delete(context.Background(), awsCluster)
+			Expect(err).NotTo(HaveOccurred())
 		})
 
-		It("removes the finalizer", func() {
+		It("removes the finalizer on Cluster", func() {
 			err := k8sClient.Get(ctx, types.NamespacedName{
 				Namespace: cluster.Namespace,
 				Name:      cluster.Name,
 			}, cluster)
+			Expect(k8serrors.IsNotFound(err)).To(BeTrue())
+		})
+
+		It("removes the finalizer on AWSCluster", func() {
+			err := k8sClient.Get(ctx, types.NamespacedName{
+				Namespace: cluster.Namespace,
+				Name:      cluster.Name,
+			}, awsCluster)
 			Expect(k8serrors.IsNotFound(err)).To(BeTrue())
 		})
 
@@ -239,8 +260,8 @@ var _ = Describe("ConfigMapReconciler", func() {
 
 	When("the cluster is in china", func() {
 		BeforeEach(func() {
-			cluster.Spec.Region = "cn-north-1"
-			err := k8sClient.Update(ctx, cluster)
+			awsCluster.Spec.Region = "cn-north-1"
+			err := k8sClient.Update(ctx, awsCluster)
 			Expect(err).NotTo(HaveOccurred())
 		})
 
@@ -256,10 +277,11 @@ var _ = Describe("ConfigMapReconciler", func() {
                 awsCluster:
                   vpcId: vpc-1
                 baseDomain: %s.base.domain.io
+                oidcDomain: irsa.%s.base.domain.io
                 clusterName: %s
                 region: cn-north-1
                 awsPartition: aws-cn
-            `, accountID, cluster.Name, cluster.Name))))
+            `, accountID, cluster.Name, cluster.Name, cluster.Name))))
 		})
 
 		It("creates the provider config with the correct aws partition", func() {
@@ -295,16 +317,16 @@ var _ = Describe("ConfigMapReconciler", func() {
 
 	When("the cluster is provisioned by CAPA", func() {
 		BeforeEach(func() {
-			cluster.Spec.NetworkSpec.VPC.ID = "vpc-123456"
-			err := k8sClient.Update(ctx, cluster)
+			awsCluster.Spec.NetworkSpec.VPC.ID = "vpc-123456"
+			err := k8sClient.Update(ctx, awsCluster)
 			Expect(err).NotTo(HaveOccurred())
 
-			cluster.Status.Network.SecurityGroups = map[capa.SecurityGroupRole]capa.SecurityGroup{
+			awsCluster.Status.Network.SecurityGroups = map[capa.SecurityGroupRole]capa.SecurityGroup{
 				capa.SecurityGroupControlPlane: {
 					ID: "sg-789987",
 				},
 			}
-			err = k8sClient.Status().Update(ctx, cluster)
+			err = k8sClient.Status().Update(ctx, awsCluster)
 			Expect(err).NotTo(HaveOccurred())
 		})
 
@@ -324,9 +346,10 @@ var _ = Describe("ConfigMapReconciler", func() {
                   vpcId: vpc-123456
                 awsPartition: aws
                 baseDomain: %s.base.domain.io
+                oidcDomain: irsa.%s.base.domain.io
                 clusterName: %s
                 region: the-region
-            `, accountID, cluster.Name, cluster.Name))))
+            `, accountID, cluster.Name, cluster.Name, cluster.Name))))
 		})
 	})
 
