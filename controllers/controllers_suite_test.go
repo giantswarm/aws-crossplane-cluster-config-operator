@@ -69,7 +69,6 @@ var _ = BeforeSuite(func() {
 	}
 	logger = zap.New(zap.UseFlagOptions(&opts))
 	logf.SetLogger(logger)
-	logf.SetLogger(zap.New(zap.WriteTo(GinkgoWriter), zap.UseDevMode(true)))
 
 	tests.GetEnvOrSkip("KUBEBUILDER_ASSETS")
 
