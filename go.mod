@@ -18,7 +18,7 @@ require (
 	k8s.io/kubectl v0.29.2
 	sigs.k8s.io/cluster-api v1.6.2
 	sigs.k8s.io/cluster-api-provider-aws/v2 v2.4.0
-	sigs.k8s.io/controller-runtime v0.18.4
+	sigs.k8s.io/controller-runtime v0.18.5
 	sigs.k8s.io/yaml v1.4.0
 )
 
