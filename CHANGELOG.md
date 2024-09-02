@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Configure the Crossplane `ProviderConfig` to use the CAPA controller role directly without going through a middle-man. For this to work, the CAPA controller role needs to have the correct trust policy granting access to the Crossplane providers ServiceAccount.
+
 ## [0.2.1] - 2024-08-14
 
 ### Fixed

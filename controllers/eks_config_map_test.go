@@ -92,7 +92,6 @@ var _ = Describe("ConfigMapReconcilerEKS", func() {
 		reconciler = &controllers.ConfigMapReconciler{
 			Client:       k8sClient,
 			BaseDomain:   "base.domain.io",
-			AssumeRole:   "the-assume-role",
 			ProviderRole: "the-provider-role",
 		}
 		roleARN, err := arn.Parse(identity.Spec.RoleArn)
