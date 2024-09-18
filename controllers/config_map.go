@@ -47,7 +47,6 @@ type ConfigMapReconciler struct {
 	Client       client.Client
 	BaseDomain   string
 	ProviderRole string
-	AssumeRole   string
 }
 
 type ClusterInfo struct {
@@ -474,11 +473,6 @@ func (r *ConfigMapReconciler) getProviderConfigSpec(accountID, region string) ma
 		"credentials": map[string]interface{}{
 			"source": "WebIdentity",
 			"webIdentity": map[string]interface{}{
-				"roleARN": fmt.Sprintf("arn:%s:iam::%s:role/%s", partition, accountID, r.AssumeRole),
-			},
-		},
-		"assumeRoleChain": []map[string]interface{}{
-			{
 				"roleARN": fmt.Sprintf("arn:%s:iam::%s:role/%s", partition, accountID, r.ProviderRole),
 			},
 		},

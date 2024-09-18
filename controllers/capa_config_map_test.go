@@ -75,12 +75,9 @@ var _ = Describe("ConfigMapReconcilerCAPA", func() {
 			"credentials": MatchKeys(IgnoreExtras, Keys{
 				"source": Equal("WebIdentity"),
 				"webIdentity": MatchKeys(IgnoreExtras, Keys{
-					"roleARN": Equal(fmt.Sprintf("arn:aws:iam::%s:role/the-assume-role", accountID)),
+					"roleARN": Equal(fmt.Sprintf("arn:aws:iam::%s:role/the-provider-role", accountID)),
 				}),
 			}),
-			"assumeRoleChain": ConsistOf(MatchKeys(IgnoreExtras, Keys{
-				"roleARN": Equal(fmt.Sprintf("arn:aws:iam::%s:role/the-provider-role", accountID)),
-			})),
 		})))
 	}
 
@@ -91,7 +88,6 @@ var _ = Describe("ConfigMapReconcilerCAPA", func() {
 		reconciler = &controllers.ConfigMapReconciler{
 			Client:       k8sClient,
 			BaseDomain:   "base.domain.io",
-			AssumeRole:   "the-assume-role",
 			ProviderRole: "the-provider-role",
 		}
 		roleARN, err := arn.Parse(identity.Spec.RoleArn)
@@ -168,11 +164,6 @@ var _ = Describe("ConfigMapReconcilerCAPA", func() {
 					"credentials": map[string]interface{}{
 						"source": "WebIdentity",
 						"webIdentity": map[string]interface{}{
-							"roleARN": fmt.Sprintf("arn:aws:iam::%s:role/some-other-assume-role", someOtherAccount),
-						},
-					},
-					"assumeRoleChain": []map[string]interface{}{
-						{
 							"roleARN": fmt.Sprintf("arn:aws:iam::%s:role/some-other-provider-role", someOtherAccount),
 						},
 					},
@@ -305,12 +296,9 @@ var _ = Describe("ConfigMapReconcilerCAPA", func() {
 				"credentials": MatchKeys(IgnoreExtras, Keys{
 					"source": Equal("WebIdentity"),
 					"webIdentity": MatchKeys(IgnoreExtras, Keys{
-						"roleARN": Equal(fmt.Sprintf("arn:aws-cn:iam::%s:role/the-assume-role", accountID)),
+						"roleARN": Equal(fmt.Sprintf("arn:aws-cn:iam::%s:role/the-provider-role", accountID)),
 					}),
 				}),
-				"assumeRoleChain": ConsistOf(MatchKeys(IgnoreExtras, Keys{
-					"roleARN": Equal(fmt.Sprintf("arn:aws-cn:iam::%s:role/the-provider-role", accountID)),
-				})),
 			})))
 		})
 	})
