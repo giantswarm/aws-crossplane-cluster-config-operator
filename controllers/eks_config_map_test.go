@@ -50,6 +50,8 @@ var _ = Describe("ConfigMapReconcilerEKS", func() {
                 baseDomain: %s.base.domain.io
                 clusterName: %s
                 oidcDomain: oidc.eks.the-region.amazonaws.com/id/eks123clusterID
+                oidcDomains:
+                - oidc.eks.the-region.amazonaws.com/id/eks123clusterID
                 region: the-region
                 awsPartition: aws
             `, accountID, cluster.Name, cluster.Name))))
@@ -148,6 +150,8 @@ var _ = Describe("ConfigMapReconcilerEKS", func() {
                     awsPartition: cn
                     baseDomain: %s.base.domain.io
                     oidcDomain: oidc.eks.some-other-region.amazonaws.com.cn/id/eks123clusterID
+                    oidcDomains:
+                    - oidc.eks.some-other-region.amazonaws.com.cn/id/eks123clusterID
                     clusterName: %s
                     region: some-other-region
                 `, someOtherAccount, cluster.Name, cluster.Name),
@@ -253,6 +257,8 @@ var _ = Describe("ConfigMapReconcilerEKS", func() {
                   vpcId: vpc-1
                 baseDomain: %s.base.domain.io
                 oidcDomain: oidc.eks.cn-north-1.amazonaws.com.cn/id/eks123clusterID
+                oidcDomains:
+                - oidc.eks.cn-north-1.amazonaws.com.cn/id/eks123clusterID
                 clusterName: %s
                 region: cn-north-1
                 awsPartition: aws-cn
@@ -316,6 +322,8 @@ var _ = Describe("ConfigMapReconcilerEKS", func() {
                 awsPartition: aws
                 baseDomain: %s.base.domain.io
                 oidcDomain: oidc.eks.the-region.amazonaws.com/id/eks123clusterID
+                oidcDomains:
+                - oidc.eks.the-region.amazonaws.com/id/eks123clusterID
                 clusterName: %s
                 region: the-region
             `, accountID, cluster.Name, cluster.Name))))
