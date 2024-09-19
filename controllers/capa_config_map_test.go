@@ -49,9 +49,11 @@ var _ = Describe("ConfigMapReconcilerCAPA", func() {
                 baseDomain: %s.base.domain.io
                 clusterName: %s
                 oidcDomain: irsa.%s.base.domain.io
+                oidcDomains:
+                - irsa.%s.base.domain.io
                 region: the-region
                 awsPartition: aws
-            `, accountID, cluster.Name, cluster.Name, cluster.Name))))
+            `, accountID, cluster.Name, cluster.Name, cluster.Name, cluster.Name))))
 	}
 
 	verifyProviderConfig := func() {
@@ -147,9 +149,11 @@ var _ = Describe("ConfigMapReconcilerCAPA", func() {
                     awsPartition: cn
                     baseDomain: %s.base.domain.io
                     oidcDomain: irsa.%s.base.domain.io
+                    oidcDomains:
+                    - irsa.%s.base.domain.io
                     clusterName: %s
                     region: some-other-region
-                `, someOtherAccount, cluster.Name, cluster.Name, cluster.Name),
+                `, someOtherAccount, cluster.Name, cluster.Name, cluster.Name, cluster.Name),
 			}
 			err := k8sClient.Create(ctx, configMap)
 			Expect(err).NotTo(HaveOccurred())
@@ -269,10 +273,12 @@ var _ = Describe("ConfigMapReconcilerCAPA", func() {
                   vpcId: vpc-1
                 baseDomain: %s.base.domain.io
                 oidcDomain: irsa.%s.base.domain.io
+                oidcDomains:
+                - irsa.%s.base.domain.io
                 clusterName: %s
                 region: cn-north-1
                 awsPartition: aws-cn
-            `, accountID, cluster.Name, cluster.Name, cluster.Name))))
+            `, accountID, cluster.Name, cluster.Name, cluster.Name, cluster.Name))))
 		})
 
 		It("creates the provider config with the correct aws partition", func() {
@@ -335,9 +341,45 @@ var _ = Describe("ConfigMapReconcilerCAPA", func() {
                 awsPartition: aws
                 baseDomain: %s.base.domain.io
                 oidcDomain: irsa.%s.base.domain.io
+                oidcDomains:
+                - irsa.%s.base.domain.io
                 clusterName: %s
                 region: the-region
-            `, accountID, cluster.Name, cluster.Name, cluster.Name))))
+            `, accountID, cluster.Name, cluster.Name, cluster.Name, cluster.Name))))
+		})
+	})
+
+	When("the cluster has multiple service account issuers defined by an annotation", func() {
+		BeforeEach(func() {
+			awsCluster.Spec.NetworkSpec.VPC.ID = "vpc-123456"
+			if awsCluster.Annotations == nil {
+				awsCluster.Annotations = map[string]string{}
+			}
+			awsCluster.Annotations["aws.giantswarm.io/irsa-trust-domains"] = "first,second"
+			err := k8sClient.Update(ctx, awsCluster)
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("creates the configmap with the correct service account issuer domains", func() {
+			configMap := &corev1.ConfigMap{}
+			err := k8sClient.Get(ctx, types.NamespacedName{
+				Namespace: cluster.Namespace,
+				Name:      fmt.Sprintf("%s-crossplane-config", cluster.Name),
+			}, configMap)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(configMap.Data).To(HaveKeyWithValue("values", MatchYAML(fmt.Sprintf(`
+                accountID: "%s"
+                awsCluster:
+                  vpcId: vpc-123456
+                awsPartition: aws
+                baseDomain: %s.base.domain.io
+                oidcDomain: first
+                oidcDomains:
+                - first
+                - second
+                clusterName: %s
+                region: the-region
+            `, accountID, cluster.Name, cluster.Name))))
 		})
 	})
 

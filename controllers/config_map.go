@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"net/url"
+	"slices"
 	"strings"
 
 	"github.com/aws/aws-sdk-go/aws/arn"
@@ -50,13 +51,19 @@ type ConfigMapReconciler struct {
 }
 
 type ClusterInfo struct {
-	Name           string
-	Namespace      string
-	Region         string
-	AWSPartition   string
-	VpcID          string
-	RoleArn        arn.ARN
-	OIDCDomain     string
+	Name         string
+	Namespace    string
+	Region       string
+	AWSPartition string
+	VpcID        string
+	RoleArn      arn.ARN
+
+	// Only contains the primary OIDC domain. See also the plural variant below.
+	OIDCDomain string
+
+	// All service account issuer domains
+	OIDCDomains []string
+
 	SecurityGroups *crossplaneConfigValuesAWSClusterSecurityGroups
 }
 
@@ -116,6 +123,7 @@ func (r *ConfigMapReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		}
 
 		clusterInfo.OIDCDomain = "oidc.eks." + clusterInfo.Region + "." + dnsSuffix + "/id/" + eksId
+		clusterInfo.OIDCDomains = []string{clusterInfo.OIDCDomain}
 
 	} else {
 		awsCluster := &capa.AWSCluster{}
@@ -134,7 +142,14 @@ func (r *ConfigMapReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			logger.Error(err, "failed to get cluster role identity")
 			return ctrl.Result{}, errors.WithStack(client.IgnoreNotFound(err))
 		}
-		clusterInfo.OIDCDomain = "irsa." + clusterInfo.Name + "." + r.BaseDomain
+
+		// May not apply to all clusters (e.g. different in China region), so we prefer reading the actual values
+		// from the `AWSCluster` annotation
+		computedIRSADomain := "irsa." + clusterInfo.Name + "." + r.BaseDomain
+		irsaTrustDomains := getIRSATrustDomains(awsCluster, computedIRSADomain)
+		clusterInfo.OIDCDomain = irsaTrustDomains[0]
+		clusterInfo.OIDCDomains = irsaTrustDomains
+
 		if sg, ok := awsCluster.Status.Network.SecurityGroups[capa.SecurityGroupControlPlane]; ok {
 			if clusterInfo.SecurityGroups == nil {
 				clusterInfo.SecurityGroups = &crossplaneConfigValuesAWSClusterSecurityGroups{}
@@ -167,6 +182,27 @@ func getEKSId(urlString string) (string, error) {
 	}
 
 	return "", fmt.Errorf("unable to extract ID from URL")
+}
+
+func getIRSATrustDomains(awsCluster *capa.AWSCluster, fallbackComputedDomain string) []string {
+	annotations := awsCluster.GetAnnotations()
+	if annotations == nil {
+		annotations = map[string]string{}
+	}
+	if s := annotations["aws.giantswarm.io/irsa-trust-domains"]; s != "" {
+		irsaTrustDomains := []string{}
+		values := strings.Split(s, ",")
+		for _, value := range values {
+			value = strings.TrimSpace(value)
+			if value != "" && !slices.Contains(irsaTrustDomains, value) {
+				irsaTrustDomains = append(irsaTrustDomains, value)
+			}
+		}
+		if len(irsaTrustDomains) > 0 {
+			return irsaTrustDomains
+		}
+	}
+	return []string{fallbackComputedDomain}
 }
 
 func (r *ConfigMapReconciler) getRoleArn(ctx context.Context, idRef string, namespace string) (arn.ARN, error) {
@@ -238,7 +274,10 @@ type crossplaneConfigValues struct {
 	BaseDomain   string                           `json:"baseDomain"`
 	ClusterName  string                           `json:"clusterName"`
 	Region       string                           `json:"region"`
-	OIDCDomain   string                           `json:"oidcDomain"`
+
+	// For backward compatibility, we still export the primary domain as singular-named field `oidcDomain`
+	OIDCDomain  string   `json:"oidcDomain"`
+	OIDCDomains []string `json:"oidcDomains"`
 }
 
 type crossplaneConfigValuesAWSCluster struct {
@@ -491,7 +530,8 @@ func getConfigMapValues(clusterInfo *ClusterInfo, accountID, baseDomain string) 
 		BaseDomain:   fmt.Sprintf("%s.%s", clusterInfo.Name, baseDomain),
 		ClusterName:  clusterInfo.Name,
 		Region:       clusterInfo.Region,
-		OIDCDomain:   clusterInfo.OIDCDomain,
+		OIDCDomain:   clusterInfo.OIDCDomains[0],
+		OIDCDomains:  clusterInfo.OIDCDomains,
 	}
 
 	configMapValues, err := yaml.Marshal(values)
