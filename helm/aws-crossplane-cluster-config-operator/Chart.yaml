@@ -3,6 +3,6 @@ name: aws-crossplane-cluster-config-operator
 description: Please add description
 home: https://github.com/giantswarm/aws-crossplane-cluster-config-operator
 icon: https://s.giantswarm.io/app-icons/aws/2/dark.svg
-version: "0.2.1"
+version: "0.3.0"
 annotations:
   application.giantswarm.io/team: "phoenix"
