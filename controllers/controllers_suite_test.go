@@ -78,8 +78,8 @@ var _ = BeforeSuite(func() {
 	crdPath := filepath.Join(filepath.Dir(ex), "..", "tests", "testdata", "crds")
 	testEnv = &envtest.Environment{
 		CRDDirectoryPaths: []string{
-			filepath.Join(build.Default.GOPATH, "pkg", "mod", "sigs.k8s.io", "cluster-api@v1.6.2", "config", "crd", "bases"),
-			filepath.Join(build.Default.GOPATH, "pkg", "mod", "sigs.k8s.io", "cluster-api-provider-aws", "v2@v2.4.0", "config", "crd", "bases"),
+			filepath.Join(build.Default.GOPATH, "pkg", "mod", "sigs.k8s.io", "cluster-api@v1.8.3", "config", "crd", "bases"),
+			filepath.Join(build.Default.GOPATH, "pkg", "mod", "sigs.k8s.io", "cluster-api-provider-aws", "v2@v2.6.1", "config", "crd", "bases"),
 			crdPath,
 		},
 		ErrorIfCRDPathMissing: true,
