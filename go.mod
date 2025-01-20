@@ -2,7 +2,7 @@ module github.com/giantswarm/aws-crossplane-cluster-config-operator
 
 go 1.22.0
 
-toolchain go1.23.4
+toolchain go1.23.5
 
 require (
 	github.com/aws/aws-sdk-go v1.55.5
