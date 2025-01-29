@@ -45,6 +45,7 @@ var _ = Describe("ConfigMapReconcilerCAPA", func() {
 		Expect(configMap.Data).To(HaveKeyWithValue("values", MatchYAML(fmt.Sprintf(`
                 accountID: "%s"
                 awsCluster:
+                  securityGroups: {}
                   vpcId: vpc-1
                 baseDomain: %s.base.domain.io
                 clusterName: %s
@@ -145,6 +146,7 @@ var _ = Describe("ConfigMapReconcilerCAPA", func() {
 				"values": fmt.Sprintf(`
                     accountID: "%s"
                     awsCluster:
+                        securityGroups: {}
                         vpcId: vpc-1
                     awsPartition: cn
                     baseDomain: %s.base.domain.io
@@ -270,6 +272,7 @@ var _ = Describe("ConfigMapReconcilerCAPA", func() {
 			Expect(configMap.Data).To(HaveKeyWithValue("values", MatchYAML(fmt.Sprintf(`
                 accountID: "%s"
                 awsCluster:
+                  securityGroups: {}
                   vpcId: vpc-1
                 baseDomain: %s.base.domain.io
                 oidcDomain: irsa.%s.base.domain.io
@@ -319,6 +322,9 @@ var _ = Describe("ConfigMapReconcilerCAPA", func() {
 				capa.SecurityGroupControlPlane: {
 					ID: "sg-789987",
 				},
+				capa.SecurityGroupNode: {
+					ID: "sg-898989",
+				},
 			}
 			err = k8sClient.Status().Update(ctx, awsCluster)
 			Expect(err).NotTo(HaveOccurred())
@@ -337,6 +343,8 @@ var _ = Describe("ConfigMapReconcilerCAPA", func() {
                   securityGroups:
                     controlPlane:
                       id: sg-789987
+                    node:
+                      id: sg-898989
                   vpcId: vpc-123456
                 awsPartition: aws
                 baseDomain: %s.base.domain.io
@@ -370,6 +378,7 @@ var _ = Describe("ConfigMapReconcilerCAPA", func() {
 			Expect(configMap.Data).To(HaveKeyWithValue("values", MatchYAML(fmt.Sprintf(`
                 accountID: "%s"
                 awsCluster:
+                  securityGroups: {}
                   vpcId: vpc-123456
                 awsPartition: aws
                 baseDomain: %s.base.domain.io

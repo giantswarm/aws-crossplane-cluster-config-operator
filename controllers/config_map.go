@@ -150,11 +150,16 @@ func (r *ConfigMapReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		clusterInfo.OIDCDomain = irsaTrustDomains[0]
 		clusterInfo.OIDCDomains = irsaTrustDomains
 
+		clusterInfo.SecurityGroups = &crossplaneConfigValuesAWSClusterSecurityGroups{}
+
 		if sg, ok := awsCluster.Status.Network.SecurityGroups[capa.SecurityGroupControlPlane]; ok {
-			if clusterInfo.SecurityGroups == nil {
-				clusterInfo.SecurityGroups = &crossplaneConfigValuesAWSClusterSecurityGroups{}
-			}
 			clusterInfo.SecurityGroups.ControlPlane = &crossplaneConfigValuesAWSClusterSecurityGroup{
+				ID: sg.ID,
+			}
+		}
+
+		if sg, ok := awsCluster.Status.Network.SecurityGroups[capa.SecurityGroupNode]; ok {
+			clusterInfo.SecurityGroups.Node = &crossplaneConfigValuesAWSClusterSecurityGroup{
 				ID: sg.ID,
 			}
 		}
@@ -289,6 +294,7 @@ type crossplaneConfigValuesAWSCluster struct {
 type crossplaneConfigValuesAWSClusterSecurityGroups struct {
 	// Filled once available
 	ControlPlane *crossplaneConfigValuesAWSClusterSecurityGroup `json:"controlPlane,omitempty"`
+	Node         *crossplaneConfigValuesAWSClusterSecurityGroup `json:"node,omitempty"`
 }
 
 type crossplaneConfigValuesAWSClusterSecurityGroup struct {
