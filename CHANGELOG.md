@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2025-01-29
+
 ### Changed
 
 - Dynamically calculate CAPI and CAPA versions from go cache, so that we use the right path when installing the CRDs during tests.
@@ -51,7 +53,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initial implementation.
 
-[Unreleased]: https://github.com/giantswarm/aws-crossplane-cluster-config-operator/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/giantswarm/aws-crossplane-cluster-config-operator/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/giantswarm/aws-crossplane-cluster-config-operator/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/giantswarm/aws-crossplane-cluster-config-operator/compare/v0.2.1...v0.3.0
 [0.2.1]: https://github.com/giantswarm/aws-crossplane-cluster-config-operator/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/giantswarm/aws-crossplane-cluster-config-operator/compare/v0.1.1...v0.2.0
