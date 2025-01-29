@@ -10,6 +10,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Dynamically calculate CAPI and CAPA versions from go cache, so that we use the right path when installing the CRDs during tests.
+
+### Added
+
 - Add the `node` security group id to the ConfigMap
 
 ## [0.3.0] - 2024-09-20
