@@ -319,6 +319,9 @@ var _ = Describe("ConfigMapReconcilerCAPA", func() {
 				capa.SecurityGroupControlPlane: {
 					ID: "sg-789987",
 				},
+				capa.SecurityGroupNode: {
+					ID: "sg-898989",
+				},
 			}
 			err = k8sClient.Status().Update(ctx, awsCluster)
 			Expect(err).NotTo(HaveOccurred())
