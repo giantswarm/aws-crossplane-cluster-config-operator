@@ -337,6 +337,8 @@ var _ = Describe("ConfigMapReconcilerCAPA", func() {
                   securityGroups:
                     controlPlane:
                       id: sg-789987
+										node:
+											id: sg-898989
                   vpcId: vpc-123456
                 awsPartition: aws
                 baseDomain: %s.base.domain.io
