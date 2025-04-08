@@ -1,6 +1,7 @@
 version: 2
-issues:
-  exclude-rules:
+linters:
+  exclusions:
+    rules:
     - path: _test\.go
       linters:
       - gosec
