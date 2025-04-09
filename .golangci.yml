@@ -6,3 +6,10 @@ linters:
       linters:
       - gosec
       - goconst
+# v1 config, remove when golangci-lint v2 is active
+issues:
+  exclude-rules:
+    - path: _test\.go
+      linters:
+      - gosec
+      - goconst
