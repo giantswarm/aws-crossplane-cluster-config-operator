@@ -37,7 +37,6 @@ import (
 	capa "sigs.k8s.io/cluster-api-provider-aws/v2/api/v1beta2"
 	eks "sigs.k8s.io/cluster-api-provider-aws/v2/controlplane/eks/api/v1beta2"
 	capi "sigs.k8s.io/cluster-api/api/v1beta1"
-	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -209,7 +208,7 @@ func newEksCluster(name string, annotationsKeyValues ...string) *eks.AWSManagedC
 		},
 		Spec: eks.AWSManagedControlPlaneSpec{
 			Region: "the-region",
-			ControlPlaneEndpoint: clusterv1.APIEndpoint{
+			ControlPlaneEndpoint: capi.APIEndpoint{
 				Host: "https://eks123clusterID.sk1.eu-west-2.eks.amazonaws.com",
 				Port: 443,
 			},
