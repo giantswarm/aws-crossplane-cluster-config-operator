@@ -1,6 +1,6 @@
 version: 2.1
 orbs:
-  architect: giantswarm/architect@dev:ca8d9b514c14985d1f15abe0b8e7193123b87b13 # uses golangci-lint v1.64.7
+  architect: giantswarm/architect@5.13.1
 
 jobs:
   unit-tests:
