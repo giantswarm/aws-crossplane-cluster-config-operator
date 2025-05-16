@@ -1,5 +1,5 @@
 image:
-  registry: quay.io
+  registry: gsoci.azurecr.io
   name: giantswarm/aws-crossplane-cluster-config-operator
   tag: ""
   pullPolicy: IfNotPresent
