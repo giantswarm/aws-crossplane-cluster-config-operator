@@ -17,8 +17,8 @@ require (
 	k8s.io/apimachinery v0.31.4
 	k8s.io/client-go v0.31.4
 	k8s.io/kubectl v0.31.4
-	sigs.k8s.io/cluster-api v1.9.4
-	sigs.k8s.io/cluster-api-provider-aws/v2 v2.7.1
+	sigs.k8s.io/cluster-api v1.10.2
+	sigs.k8s.io/cluster-api-provider-aws/v2 v2.8.3
 	sigs.k8s.io/controller-runtime v0.19.4
 	sigs.k8s.io/yaml v1.4.0
 )
